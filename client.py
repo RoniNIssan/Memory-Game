@@ -1,17 +1,19 @@
 import socket
 import threading
 import pygame
+from pyvidplayer import Video
 
 username = ""
 port = ""
 ip = 0
 
 # booleans
+ready_to_connect = False
 ready_to_start = False
 
 
 def handle_graphics():
-    global ready_to_start
+    global ready_to_connect
 
     # define screen size
     WINDOW_SIZE = (854, 480)
@@ -27,13 +29,14 @@ def handle_graphics():
     running = True
 
     while running:
+        # pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
         show_intro_screen(screen)
-        ready_to_start = True
-        print("ready to play")
-        pygame.display.update()
+        ready_to_connect = True
+        print("video")
+        show_waiting_screen(screen)
 
 
 def show_intro_screen(screen):
@@ -106,6 +109,17 @@ def show_intro_screen(screen):
                 pygame.display.flip()
 
 
+def show_waiting_screen(screen):
+    global ready_to_start
+    VIDEO_SIZE = (854, 480)
+    waiting_screen_vid = Video(r"data\screens\waiting_screen.mp4")
+    waiting_screen_vid.set_size(VIDEO_SIZE)
+
+    while not ready_to_start:
+        waiting_screen_vid.draw(screen, (0, 0))
+        pygame.display.update()
+
+
 def keyboard_input(event, user_text):
     if event.key == pygame.K_BACKSPACE:
 
@@ -120,13 +134,13 @@ def keyboard_input(event, user_text):
 
 
 def main():
-    global ready_to_start, port, ip
+    global ready_to_connect, port, ip
 
     graphics = threading.Thread(target=handle_graphics)
     graphics.start()
 
     while True:
-        if ready_to_start:
+        if ready_to_connect:
             user_sock = socket.socket()
             user_sock.connect((ip, port))
             print("connected")
