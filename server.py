@@ -3,25 +3,14 @@ import threading
 
 players = []
 end_game = False
+ready_to_start = False
 
 
 class Player:
-    def __int__(self, id, sock, tid):
-        self._id = id
-        self._sock = sock
-        self._turn = tid
-
-    def get_id(self):
-        return self._id
-
-    def get_socket(self):
-        return self._sock
-
-    def get_turn(self):
-        return self._turn
-
-    def win(self):
-        pass
+    def __init__(self, id, user_socket, pid):
+        self.id = id
+        self.user_socket = user_socket
+        self.pid = pid
 
 
 def find_other_player_index(tid):
@@ -31,15 +20,31 @@ def find_other_player_index(tid):
         return 1
 
 
+def protocol_build_msg(msg_code):
+    if msg_code == 'WLCM':
+        return 'WLCM' + '#' + 'you are connected!'
+    elif msg_code == 'WAIT':
+        return 'WAIT' + '#' + 'waiting for another player'
+    elif msg_code == 'RDEY':
+        return 'RDEY' + '#' + 'ready to play!'
+
+
+def send_msg(sock, msg):
+    data = msg + '$'
+    sock.send(data.encode())
+
+
 def handle_client(player, tid):
-    global players
-    other_player_index = find_other_player_index(tid)
-    while True:
-        if len(players) < 2:
-            player.get_socket().send("waiting for another player".encode())
-            continue
-        else:
-            player.get_socket().send(players[other_player_index - 1]) # TODO: pickle sent object
+    global players, ready_to_start
+    to_send = protocol_build_msg('WLCM')
+    send_msg(player.user_socket, to_send)
+
+    while not ready_to_start:
+        to_send = protocol_build_msg('WAIT')
+        send_msg(player.user_socket, to_send)
+
+    to_send = protocol_build_msg('RDEY')
+    send_msg(player.user_socket, to_send)
 
 
 def receive_data():
@@ -56,7 +61,7 @@ def receive_data():
 
 
 def main():
-    global players, end_game
+    global players, end_game, ready_to_start
     IP = '0.0.0.0'
     PORT = 3339
     TIMEOUT = 0.02
@@ -71,11 +76,12 @@ def main():
 
     while len(threads) < 2:
         client_socket, addr = server_socket.accept()
-        player = Player(addr, client_socket, len(threads) + 1)
-        players.append(player)
+        players.append(Player(addr, client_socket, len(threads)))
         t = threading.Thread(target=handle_client, args=(players[len(threads)], len(threads) + 1))
         t.start()
         threads.append(t)
+
+    ready_to_start = True
 
     while not end_game:
         receive_data()

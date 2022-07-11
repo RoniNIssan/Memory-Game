@@ -10,6 +10,7 @@ ip = 0
 # booleans
 ready_to_connect = False
 ready_to_start = False
+connected = False
 
 
 def handle_graphics():
@@ -133,20 +134,58 @@ def keyboard_input(event, user_text):
     return user_text
 
 
+def handle_msg(code, msg):
+    global connected, ready_to_start
+    if code == 'WLCM':
+        print(msg)
+        connected = True
+    elif code == 'WAIT':
+        print(msg)
+        ready_to_start = False
+    elif code == 'RDEY':
+        print(msg)
+        ready_to_start = True
+
+
+def analyze_msg(msg):
+    all_msg = msg.split('$')
+    for msg in all_msg:
+        code = msg[:4]
+        msg = all_msg[4:]
+        handle_msg(code, msg)
+
+
 def main():
-    global ready_to_connect, port, ip
+    global ready_to_connect, port, ip, connected, ready_to_start
 
     graphics = threading.Thread(target=handle_graphics)
     graphics.start()
+    user_sock = socket.socket()
 
     while True:
         if ready_to_connect:
-            user_sock = socket.socket()
             user_sock.connect((ip, port))
-            print("connected")
+            msg = user_sock.recv(1024)
+            if msg == b'':
+                print("something went wrong. please try again.")
+                break
+            msg = msg.decode('UTF-8')
+            analyze_msg(msg)
+            if connected:
+                print("reach")
+                break
         else:
             continue
 
+    while not ready_to_start:
+        msg = user_sock.recv(1024)
+        if msg == b'':
+            print("something went wrong. please try again.")
+            break
+        msg = msg.decode('UTF-8')
+        analyze_msg(msg)
+
+    print("ready to play")
 
 
 if __name__ == "__main__":
