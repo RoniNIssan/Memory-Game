@@ -113,7 +113,6 @@ def show_waiting_screen(screen):
     while not ready_to_start:
         waiting_screen_vid.preview()
 
-
 def keyboard_input(event, user_text):
     if event.key == pygame.K_BACKSPACE:
         user_text = user_text[:-1]

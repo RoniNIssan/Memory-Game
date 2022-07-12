@@ -14,6 +14,7 @@ class Player:
         self.pid = pid
 
 
+
 def find_other_player_index(tid):
     if tid == 1:
         return 2
