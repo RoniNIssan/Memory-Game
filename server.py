@@ -1,5 +1,6 @@
 import socket
 import threading
+import time
 
 players = []
 end_game = False
@@ -40,6 +41,7 @@ def handle_client(player, tid):
     send_msg(player.user_socket, to_send)
 
     while not ready_to_start:
+        time.sleep(0.8)
         to_send = protocol_build_msg('WAIT')
         send_msg(player.user_socket, to_send)
 

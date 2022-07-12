@@ -1,7 +1,7 @@
 import socket
 import threading
 import pygame
-from pyvidplayer import Video
+import moviepy.editor
 
 username = ""
 port = ""
@@ -36,13 +36,11 @@ def handle_graphics():
                 running = False
         show_intro_screen(screen)
         ready_to_connect = True
-        print("video")
         show_waiting_screen(screen)
 
 
 def show_intro_screen(screen):
     global username, port, ip
-    print("here")
     intro_screen = pygame.image.load(r"data\screens\intro_screen.jpg")
     screen.blit(intro_screen, (0, 0))
 
@@ -69,7 +67,6 @@ def show_intro_screen(screen):
             # if event.type == pygame.QUIT:
             #     running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
-                print("pressed")
                 if username_rect.collidepoint(event.pos):
                     writing_username = True
                     writing_port = False
@@ -89,7 +86,6 @@ def show_intro_screen(screen):
                     return
 
             if event.type == pygame.KEYDOWN:
-                print("key")
                 if writing_username:
                     # TODO: everytime when writing - reset rect color to original and rewrite (sort of erasing)
                     username = keyboard_input(event, username)
@@ -112,23 +108,15 @@ def show_intro_screen(screen):
 
 def show_waiting_screen(screen):
     global ready_to_start
-    VIDEO_SIZE = (854, 480)
-    waiting_screen_vid = Video(r"data\screens\waiting_screen.mp4")
-    waiting_screen_vid.set_size(VIDEO_SIZE)
+    waiting_screen_vid = moviepy.editor.VideoFileClip(r"data\screens\waiting_screen.mp4")
 
     while not ready_to_start:
-        waiting_screen_vid.draw(screen, (0, 0))
-        pygame.display.update()
+        waiting_screen_vid.preview()
 
 
 def keyboard_input(event, user_text):
     if event.key == pygame.K_BACKSPACE:
-
-        # get text input from 0 to -1 i.e. end.
         user_text = user_text[:-1]
-
-    # Unicode standard is used for string
-    # formation
     else:
         user_text += event.unicode
     return user_text
@@ -140,7 +128,7 @@ def handle_msg(code, msg):
         print(msg)
         connected = True
     elif code == 'WAIT':
-        print(msg)
+        # print(msg)
         ready_to_start = False
     elif code == 'RDEY':
         print(msg)
@@ -151,7 +139,7 @@ def analyze_msg(msg):
     all_msg = msg.split('$')
     for msg in all_msg:
         code = msg[:4]
-        msg = all_msg[4:]
+        msg = all_msg[5:]
         handle_msg(code, msg)
 
 
@@ -172,7 +160,6 @@ def main():
             msg = msg.decode('UTF-8')
             analyze_msg(msg)
             if connected:
-                print("reach")
                 break
         else:
             continue
