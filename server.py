@@ -1,10 +1,17 @@
 import socket
 import threading
 import time
+import elements
+import pickle
+import protocol_file
 
+board = elements.Board(level=1, category="animals")
+level = 1
 players = []
 end_game = False
 ready_to_start = False
+is_board_randomized = False
+protocol = protocol_file.Protocol()
 
 
 class Player:
@@ -14,40 +21,31 @@ class Player:
         self.pid = pid
 
 
-
-def find_other_player_index(tid):
-    if tid == 1:
-        return 2
-    else:
-        return 1
+def pack(obj: elements.Board) -> bytes:
+    return pickle.dumps(obj)
 
 
-def protocol_build_msg(msg_code):
-    if msg_code == 'WLCM':
-        return 'WLCM' + '#' + 'you are connected!'
-    elif msg_code == 'WAIT':
-        return 'WAIT' + '#' + 'waiting for another player'
-    elif msg_code == 'RDEY':
-        return 'RDEY' + '#' + 'ready to play!'
-
-
-def send_msg(sock, msg):
-    data = msg + '$'
-    sock.send(data.encode())
+def unpack(obj):
+    return pickle.loads(obj)
 
 
 def handle_client(player, tid):
-    global players, ready_to_start
-    to_send = protocol_build_msg('WLCM')
-    send_msg(player.user_socket, to_send)
+    global protocol, players, ready_to_start, level, board, is_board_randomized
+    
+    to_send = protocol.build_message(protocol.get_welcome_command(), b'successful')
+    protocol.send_message(to_send, player.user_socket)
 
     while not ready_to_start:
         time.sleep(0.8)
-        to_send = protocol_build_msg('WAIT')
-        send_msg(player.user_socket, to_send)
+        to_send = protocol.build_message(protocol.get_wait_command(), b'waiting for another player')
+        protocol.send_message(to_send, player.user_socket)
 
-    to_send = protocol_build_msg('RDEY')
-    send_msg(player.user_socket, to_send)
+    to_send = protocol.build_message(protocol.get_ready_command(), b'successful')
+    protocol.send_message(to_send, player.user_socket)
+
+    if is_board_randomized:
+        to_send = protocol.build_message(protocol.get_board_command(), pack(board))
+        protocol.send_message(to_send, player.user_socket)
 
 
 def receive_data():
@@ -63,8 +61,13 @@ def receive_data():
     players[1].set_matrix(player2_msg)
 
 
+def randomize_game(level, categroy):
+    global board
+    board = elements.Board(level, categroy)
+
+
 def main():
-    global players, end_game, ready_to_start
+    global players, end_game, ready_to_start, board, level, is_board_randomized
     IP = '0.0.0.0'
     PORT = 3339
     TIMEOUT = 0.02
@@ -83,11 +86,17 @@ def main():
         t = threading.Thread(target=handle_client, args=(players[len(threads)], len(threads) + 1))
         t.start()
         threads.append(t)
-
+    #     TODO: after connection - client sends msg so to see it is still connected
     ready_to_start = True
 
     while not end_game:
-        receive_data()
+        # LEVEL 1
+        # level = 1
+        # randomize_game(level, "animals")
+        # is_board_randomized = True
+
+        # receive_data()
+        pass
 
     for t in threads:
         t.join()

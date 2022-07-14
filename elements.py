@@ -1,7 +1,5 @@
-import pygame
-from pyvidplayer import Video
-import moviepy.editor
 import random
+
 
 class Card:
     def __init__(self, title):
@@ -30,7 +28,6 @@ class CardsInCategroy:
                         Card("bee"),
                         Card("spider"),
                         Card("elephant")]
-
     #         TODO: add more categories
     def get_pile(self):
         if self.category == "animals":
@@ -53,7 +50,6 @@ class Pile:
         random_list = random.sample(range(0, self.pile_size), int(self.pile_size / 2))
         for index in random_list:
             game_randomize_pile.append(self.pile[index - 1])
-            print(self.pile[index])
         return game_randomize_pile
 
 
@@ -61,13 +57,5 @@ class Board:
     def __init__(self, level, category):
         self.category = "animals"
         self.level = level
-        self.pile = CardsInCategroy(Pile(category, level).game_randomize_pile())
-        # print(type(self.pile))
+        self.pile = Pile(category, level).game_randomize_pile()
 # TODO: change sturcture: pile consists of category, size and a list of cards.
-
-
-def main():
-    board = Board(1, "animals")
-
-if __name__ == '__main__':
-    main()

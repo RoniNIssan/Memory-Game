@@ -2,7 +2,10 @@ import socket
 import threading
 import pygame
 import moviepy.editor
+import pickle
+import protocol_file
 
+protocol = protocol_file.Protocol()
 username = ""
 port = ""
 ip = 0
@@ -11,6 +14,7 @@ ip = 0
 ready_to_connect = False
 ready_to_start = False
 connected = False
+board = None
 
 
 def handle_graphics():
@@ -113,6 +117,7 @@ def show_waiting_screen(screen):
     while not ready_to_start:
         waiting_screen_vid.preview()
 
+
 def keyboard_input(event, user_text):
     if event.key == pygame.K_BACKSPACE:
         user_text = user_text[:-1]
@@ -121,25 +126,41 @@ def keyboard_input(event, user_text):
     return user_text
 
 
-def handle_msg(code, msg):
-    global connected, ready_to_start
-    if code == 'WLCM':
-        print(msg)
-        connected = True
-    elif code == 'WAIT':
-        # print(msg)
+def unpack(obj):
+    return pickle.loads(obj)
+
+
+def handle_msg(command: bytes, msg: bytes):
+    global connected, ready_to_start, board, protocol
+
+    if command == protocol.get_welcome_command():
+        if protocol.analyze_message(msg) == 'successful':
+            connected = True
+
+    elif command == protocol.get_wait_command():
+        print(protocol.analyze_message(msg))
         ready_to_start = False
-    elif code == 'RDEY':
-        print(msg)
+
+    elif command == protocol.get_ready_command():
+        print(protocol.analyze_message(msg))
         ready_to_start = True
 
+    elif command == protocol.get_board_command():
+        board = unpack(protocol.analyze_message(msg))
 
-def analyze_msg(msg):
-    all_msg = msg.split('$')
-    for msg in all_msg:
-        code = msg[:4]
-        msg = all_msg[5:]
-        handle_msg(code, msg)
+
+def received_messages(data_bytes: bytes):
+    global protocol
+    if data_bytes != b'':
+        data_bytes = protocol.separate_messages(data_bytes)
+
+        for message in data_bytes:
+            handle_msg(message[:4], message)
+
+
+def handle_communication(sock: socket.socket):
+    msg = sock.recv(1024)
+    received_messages(msg)
 
 
 def main():
@@ -152,26 +173,17 @@ def main():
     while True:
         if ready_to_connect:
             user_sock.connect((ip, port))
-            msg = user_sock.recv(1024)
-            if msg == b'':
-                print("something went wrong. please try again.")
-                break
-            msg = msg.decode('UTF-8')
-            analyze_msg(msg)
+            handle_communication(user_sock) # welcome message
+
             if connected:
                 break
         else:
             continue
 
     while not ready_to_start:
-        msg = user_sock.recv(1024)
-        if msg == b'':
-            print("something went wrong. please try again.")
-            break
-        msg = msg.decode('UTF-8')
-        analyze_msg(msg)
-
-    print("ready to play")
+        handle_communication(user_sock) # wait or ready message
+    handle_communication(user_sock) # board command
+    print("received board")
 
 
 if __name__ == "__main__":
