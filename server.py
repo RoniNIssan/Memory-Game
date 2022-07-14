@@ -61,13 +61,14 @@ def receive_data():
     players[1].set_matrix(player2_msg)
 
 
-def randomize_game(level, categroy):
-    global board
-    board = elements.Board(level, categroy)
+def randomize_game(category):
+    global board, is_board_randomized, level
+    board = elements.Board(level, category)
+    is_board_randomized = True
 
 
 def main():
-    global players, end_game, ready_to_start, board, level, is_board_randomized
+    global players, end_game, ready_to_start, board, level
     IP = '0.0.0.0'
     PORT = 3339
     TIMEOUT = 0.02
@@ -90,13 +91,8 @@ def main():
     ready_to_start = True
 
     while not end_game:
-        # LEVEL 1
-        # level = 1
-        # randomize_game(level, "animals")
-        # is_board_randomized = True
-
-        # receive_data()
-        pass
+        level = 1
+        randomize_game("animals")
 
     for t in threads:
         t.join()
