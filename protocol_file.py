@@ -47,5 +47,4 @@ class Protocol:
             return data[5:]
 
     def separate_messages(self, data_bytes: bytes):
-        print("data bytes")
         return data_bytes.split(self.DECLARE_END)

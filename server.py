@@ -46,6 +46,7 @@ def handle_client(player, tid):
     if is_board_randomized:
         to_send = protocol.build_message(protocol.get_board_command(), pack(board))
         protocol.send_message(to_send, player.user_socket)
+        print(f"thread {tid} {board.pile[0].title}")
 
 
 def receive_data():
@@ -89,10 +90,7 @@ def main():
         threads.append(t)
     #     TODO: after connection - client sends msg so to see it is still connected
     ready_to_start = True
-
-    while not end_game:
-        level = 1
-        randomize_game("animals")
+    randomize_game("animals")
 
     for t in threads:
         t.join()

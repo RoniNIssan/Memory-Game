@@ -1,9 +1,12 @@
 import socket
 import threading
+import time
+
 import pygame
 import moviepy.editor
 import pickle
 import protocol_file
+import elements
 
 protocol = protocol_file.Protocol()
 username = ""
@@ -14,11 +17,14 @@ ip = 0
 ready_to_connect = False
 ready_to_start = False
 connected = False
-board = None
+board = elements.Board(1, "animals")
 
 
 def handle_graphics():
     global ready_to_connect
+    global port
+    global ip
+    global username
 
     # define screen size
     WINDOW_SIZE = (854, 480)
@@ -38,9 +44,15 @@ def handle_graphics():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        show_intro_screen(screen)
+        # TODO: uncomment show_intro_screen + delete global ip, port, username
+        # show_intro_screen(screen)
+        port = 3339
+        ip = "127.0.0.1"
+        username = "bob"
         ready_to_connect = True
+
         show_waiting_screen(screen)
+        initialize_board(screen)
 
 
 def show_intro_screen(screen):
@@ -84,7 +96,6 @@ def show_intro_screen(screen):
                     writing_username = False
                     writing_port = False
                 if play_rect.collidepoint(event.pos):
-                    print("lets begin")
                     # all other variables were changed during loop
                     port = int(port)
                     return
@@ -116,6 +127,19 @@ def show_waiting_screen(screen):
 
     while not ready_to_start:
         waiting_screen_vid.preview()
+
+
+def initialize_board(screen):
+    global board
+    base_screen = pygame.image.load(rf"data\screens\level_{board.level.level}.jpg")
+    screen.blit(base_screen, (0, 0))
+    locations = board.level.LEVEL_LOCATIONS
+    cards_in_rand_location = board.cards_in_rand_location
+
+    for i in range(len(locations)):
+        card = pygame.image.load(rf"data\screens\{board.category}\{cards_in_rand_location[i].title}.png")
+        screen.blit(card, (locations[i + 1].x, locations[i + 1].y))
+        pygame.display.update()
 
 
 def keyboard_input(event, user_text):
