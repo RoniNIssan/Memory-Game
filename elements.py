@@ -1,5 +1,6 @@
 import random
 import pygame
+import copy
 
 
 class Card:
@@ -96,8 +97,6 @@ class Board:
         cards_randomized_location_list = [card for card in self.pile] # build a base shuffled card pile
         random.shuffle(self.pile) # shuffle pile again to change location
         for card in self.pile:
-            cards_randomized_location_list.append(card)
+            cards_randomized_location_list.append(copy.copy(card))
+        random.shuffle(cards_randomized_location_list)
         return cards_randomized_location_list
-
-
-# TODO: change sturcture: pile consists of category, size and a list of cards.

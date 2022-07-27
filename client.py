@@ -177,6 +177,7 @@ def handle_gameplay_graphics(screen):
                 got_update = False
             lock.release()
 
+
 def keyboard_input(event, user_text):
     if event.key == pygame.K_BACKSPACE:
         user_text = user_text[:-1]
