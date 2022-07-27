@@ -11,7 +11,8 @@ class Protocol:
             "READY": b'REDY',
             "BOARD": b'BORD',
             "MY TURN": b'MTRN',
-            "OTHER TURN": b'OTRN'
+            "OTHER TURN": b'OTRN',
+            "UPDATE": b'UPDT'
         }
         self.SEPARATOR = b'#'
         self.DECLARE_END = b'$'
@@ -33,6 +34,9 @@ class Protocol:
 
     def get_other_turn_command(self):
         return self.COMMANDS["OTHER TURN"]
+
+    def get_update_command(self):
+        return self.COMMANDS["UPDATE"]
 
     def build_message(self, command: bytes, msg: bytes):
         # message = command + self.SEPARATOR + msg + self.DECLARE_END
@@ -63,6 +67,9 @@ class Protocol:
 
         if command == self.COMMANDS["OTHER TURN"]:
             return data[5:].decode('UTF-8')
+
+        if command == self.COMMANDS["UPDATE"]:
+            return data[5:].decode('UFT-8')
 
     def separate_messages(self, data_bytes: bytes):
         return data_bytes.split(self.DECLARE_END)

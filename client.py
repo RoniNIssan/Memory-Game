@@ -14,6 +14,8 @@ port = ""
 ip = 0
 
 # booleans
+click_on_card = False
+got_update = False
 ready_to_connect = False
 ready_to_start = False
 connected = False
@@ -152,7 +154,7 @@ def display_board(screen):
 
 
 def handle_gameplay_graphics(screen):
-    global board
+    global board, click_on_card, got_update
 
     while True:
         if my_turn:
@@ -161,18 +163,19 @@ def handle_gameplay_graphics(screen):
 
                     for i in range(len(board.level.LEVEL_LOCATIONS)):
                         if board.level.LEVEL_LOCATIONS[i + 1].collidepoint(event.pos):
+                            click_on_card = True
                             board.cards_in_rand_location[i].is_face_up = True
                             display_board(screen)
+                            click_on_card = False
                             break
         else:
             pygame.event.get()
-            try:
-                display_board(screen)
-                print("display_board")
-            except:
-                print("jump")
-                continue
 
+            lock.acquire()
+            if got_update:
+                display_board(screen)
+                got_update = False
+            lock.release()
 
 def keyboard_input(event, user_text):
     if event.key == pygame.K_BACKSPACE:
@@ -183,7 +186,7 @@ def keyboard_input(event, user_text):
 
 
 def handle_msg(command: bytes, msg: bytes):
-    global lock, connected, ready_to_start, board, protocol, my_turn
+    global lock, connected, ready_to_start, board, protocol, my_turn, got_update, lock
 
     if command == protocol.get_welcome_command():
         if protocol.analyze_message(msg) == 'successful':
@@ -202,6 +205,11 @@ def handle_msg(command: bytes, msg: bytes):
     elif command == protocol.get_board_command():
         # print("board")
         board = protocol_file.unpack(protocol.analyze_message(msg))
+
+        lock.acquire()
+        got_update = True
+        print("update")
+        lock.release()
 
     elif command == protocol.get_my_turn_command():
         lock.acquire()
@@ -242,18 +250,26 @@ def handle_game(sock: socket.socket):
     # data_update.start()
 
     while True:
-
         handle_communication(sock)  # board command
         handle_communication(sock)  # turn command
         print("my_turn: " + str(my_turn))
+
         while my_turn:
-            to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
-            protocol.send_message(to_send, sock)
-            print("sent board")
+            check_for_board_updates(sock)
         while not my_turn:
             handle_communication(sock)
 
     # data_update.join()
+
+
+def check_for_board_updates(sock: socket.socket):
+    global click_on_card, board
+
+    if click_on_card:
+        to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
+        protocol.send_message(to_send, sock)
+        print("sent board")
+        click_on_card = False
 
 
 def main():
