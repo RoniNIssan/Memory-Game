@@ -67,7 +67,7 @@ def handle_client(player, tid=0):
         if player.turn:
             to_send = protocol.build_message(protocol.get_my_turn_command(), b'its your turn.')
             protocol.send_message(to_send, players[turn].user_socket)
-            print(f"sent player {players[turn].pid} {str(to_send[:4])}")
+            # print(f"sent player {players[turn].pid} {str(to_send[:4])}")
 
             while True:
                 handle_communication(player.user_socket) # get data from user - update board
@@ -75,14 +75,14 @@ def handle_client(player, tid=0):
         else:
             to_send = protocol.build_message(protocol.get_other_turn_command(), b'its other players turn.')
             protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
-            print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
+            # print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
 
             while True:
                 lock.acquire()
                 to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
                 lock.release()
                 protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
-                print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
+                # print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
 
                 # print("send new board")
 
@@ -131,11 +131,15 @@ def handle_game(tid):
 
 
 def handle_msg(command: bytes, msg: bytes):
+    """function handles messages from client """
     global ready_to_start, board, protocol, lock
-
+    #   TODO: add more commands
     if command == protocol.get_board_command():
         lock.acquire()
-        board = protocol_file.unpack(protocol.analyze_message(msg))
+        try:
+            board = protocol_file.unpack(protocol.analyze_message(msg))
+        except:
+            pass
         lock.release()
 
 

@@ -23,6 +23,7 @@ message_complete = False
 my_socket = socket.socket()
 
 board = elements.Board(1, "animals")
+lock = threading.Lock()
 
 def handle_graphics():
     global ready_to_connect
@@ -164,7 +165,13 @@ def handle_gameplay_graphics(screen):
                             display_board(screen)
                             break
         else:
-            display_board(screen)
+            pygame.event.get()
+            try:
+                display_board(screen)
+                print("display_board")
+            except:
+                print("jump")
+                continue
 
 
 def keyboard_input(event, user_text):
@@ -176,31 +183,37 @@ def keyboard_input(event, user_text):
 
 
 def handle_msg(command: bytes, msg: bytes):
-    global connected, ready_to_start, board, protocol, my_turn
+    global lock, connected, ready_to_start, board, protocol, my_turn
 
     if command == protocol.get_welcome_command():
         if protocol.analyze_message(msg) == 'successful':
             connected = True
 
     elif command == protocol.get_wait_command():
-        print(protocol.analyze_message(msg))
+        protocol.analyze_message(msg)
+        # print(protocol.analyze_message(msg))
         ready_to_start = False
 
     elif command == protocol.get_ready_command():
-        print(protocol.analyze_message(msg))
+        protocol.analyze_message(msg)
+        # print(protocol.analyze_message(msg))
         ready_to_start = True
 
     elif command == protocol.get_board_command():
-        print("board")
+        # print("board")
         board = protocol_file.unpack(protocol.analyze_message(msg))
 
     elif command == protocol.get_my_turn_command():
+        lock.acquire()
         print(protocol.analyze_message(msg))
         my_turn = True
+        lock.release()
 
     elif command == protocol.get_other_turn_command():
+        lock.acquire()
         print(protocol.analyze_message(msg))
         my_turn = False
+        lock.release()
 
 
 def received_messages(data_bytes: bytes, sock: socket.socket):
@@ -209,15 +222,10 @@ def received_messages(data_bytes: bytes, sock: socket.socket):
         data_bytes = protocol.separate_messages(data_bytes)
 
         for message in data_bytes:
-
-            # if str(message)[-1] != protocol.DECLARE_END:
-            #     data = protocol.separate_messages(sock.recv(1024))
-            #     handle_msg(message[:4], message + data_bytes)
-            #     for index_messgae in range(len(data) - 1):
-            #         received_messages(data[index_messgae + 1], sock)
-
-            print(str(message))
-            handle_msg(message[:4], message)
+            try:
+                handle_msg(message[:4], message)
+            except:
+                return
 
 
 def handle_communication(sock: socket.socket):
@@ -234,13 +242,17 @@ def handle_game(sock: socket.socket):
     # data_update.start()
 
     while True:
+
         handle_communication(sock)  # board command
         handle_communication(sock)  # turn command
+        print("my_turn: " + str(my_turn))
         while my_turn:
             to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
             protocol.send_message(to_send, sock)
+            print("sent board")
         while not my_turn:
             handle_communication(sock)
+
     # data_update.join()
 
 

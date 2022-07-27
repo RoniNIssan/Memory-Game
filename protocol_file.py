@@ -35,12 +35,15 @@ class Protocol:
         return self.COMMANDS["OTHER TURN"]
 
     def build_message(self, command: bytes, msg: bytes):
+        # message = command + self.SEPARATOR + msg + self.DECLARE_END
+        # return bytes(len(message).zf) + self.SEPARATOR + message
         return command + self.SEPARATOR + msg + self.DECLARE_END
 
     def send_message(self, message: bytes, sock: socket.socket):
         sock.send(message)
 
     def analyze_message(self, data: bytes):
+        # message_len =
         command = data[:4]
 
         if command == self.COMMANDS["WELCOME"]:

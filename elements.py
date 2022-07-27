@@ -91,10 +91,10 @@ class Board:
         self.cards_in_rand_location = self.build_board()
 
     def build_board(self):
-        random.shuffle(self.pile)
+        random.shuffle(self.pile) # suffle all cards
 
-        cards_randomized_location_list = [card for card in self.pile]
-        random.shuffle(self.pile)
+        cards_randomized_location_list = [card for card in self.pile] # build a base shuffled card pile
+        random.shuffle(self.pile) # shuffle pile again to change location
         for card in self.pile:
             cards_randomized_location_list.append(card)
         return cards_randomized_location_list
