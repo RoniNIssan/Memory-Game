@@ -79,16 +79,22 @@ def handle_client(player, tid=0):
             protocol.send_message(to_send, players[turn].user_socket)
             print(f"sent player {players[turn].pid} {str(to_send[:4])}")
 
-            while not two_clicks:
+            count_clicks = 0
+            while count_clicks < 2:
                 try:
+                    print("waiting for board")
                     handle_communication(player.user_socket)  # get data from user - update board
                     print("got new board")
+                    count_clicks += 1
                 except:
                     pass
 
-                to_send = protocol.build_message(protocol.get_wait_command(), b'got board. Waiting for updates.')
-                protocol.send_message(to_send, players[turn].user_socket)
-                print(f"sent player {players[turn].pid} {str(to_send[:4])}")
+                if count_clicks < 2:
+                    to_send = protocol.build_message(protocol.get_wait_command(), b'got board. Waiting for updates.')
+                    protocol.send_message(to_send, players[turn].user_socket)
+                    print(f"sent player {players[turn].pid} {str(to_send[:4])}")
+
+            handle_game()
 
             if pair_correct:
                 to_send = protocol.build_message(protocol.get_correct_command(), b'correct! add 2 points.')
@@ -139,30 +145,26 @@ def receive_data():
 
 def handle_game():
     global turn, players, board, two_clicks, pair_correct
+    count_up = 0
+    list_up = []
+    for card in board.cards_in_rand_location:
+        if card.is_face_up:
+            count_up += 1
+            list_up.append(card)
 
-    while True:
-        while not two_clicks:
-            count_up = 0
-            list_up = []
-            for card in board.cards_in_rand_location:
-                if card.is_face_up:
-                    count_up += 1
-                    list_up.append(card)
+        if count_up == 2:
+            print("two clicks: " + str(two_clicks))
+            if list_up[0].title == list_up[1].title:
+                pair_correct = True
+                players[turn].points += 1
+                list_up[1].burnt = True
+                list_up[0].burnt = True
 
-                if count_up == 2:
-                    print("two clicks: " + str(two_clicks))
-                    if list_up[0].title == list_up[1].title:
-                        pair_correct = True
-                        players[turn].points += 1
-                        list_up[1].burnt = True
-                        list_up[0].burnt = True
-
-                    else:
-                        list_up[0].is_face_up = False
-                        list_up[1].is_face_up = False
-                    two_clicks = True
-                    break
-
+            else:
+                list_up[0].is_face_up = False
+                list_up[1].is_face_up = False
+            two_clicks = True
+            break
 
 def handle_msg(command: bytes, msg: bytes):
     """function handles messages from client """
@@ -213,8 +215,10 @@ def main():
 
     ready_to_start = True
     randomize_game("animals")
-    handle_game()
 
+    # handle_game()
+    while not end_game:
+        continue
     for t in threads:
         t.join()
     server_socket.close()

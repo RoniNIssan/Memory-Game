@@ -294,6 +294,7 @@ def check_for_board_updates(sock: socket.socket):
         protocol.send_message(to_send, sock)
         print("sent board")
         click_on_card = False
+        time.sleep(0.4)
         handle_communication(sock)
 
 
