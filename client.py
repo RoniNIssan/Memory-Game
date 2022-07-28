@@ -166,7 +166,8 @@ def handle_gameplay_graphics(screen):
                 if event.type == pygame.MOUSEBUTTONDOWN:
 
                     for i in range(len(board.level.LEVEL_LOCATIONS)):
-                        if board.level.LEVEL_LOCATIONS[i + 1].collidepoint(event.pos):
+                        if board.level.LEVEL_LOCATIONS[i + 1].collidepoint(event.pos) and\
+                                not board.cards_in_rand_location[i].burnt:
                             lock.acquire()
                             click_on_card = True
                             lock.release()
@@ -183,6 +184,7 @@ def handle_gameplay_graphics(screen):
             lock.release()
 
         if switch_turns:
+            print("switched turns")
             display_board(screen)
 
 
@@ -204,7 +206,7 @@ def handle_msg(command: bytes, msg: bytes):
     elif command == protocol.get_wait_command():
         protocol.analyze_message(msg)
         # print(protocol.analyze_message(msg))
-        ready_to_start = False
+        # ready_to_start = False
 
     elif command == protocol.get_ready_command():
         protocol.analyze_message(msg)

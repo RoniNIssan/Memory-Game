@@ -79,26 +79,25 @@ def handle_client(player, tid=0):
             protocol.send_message(to_send, players[turn].user_socket)
             print(f"sent player {players[turn].pid} {str(to_send[:4])}")
 
-            while True:
+            while not two_clicks:
                 try:
                     handle_communication(player.user_socket)  # get data from user - update board
                     print("got new board")
                 except:
-                    continue
+                    pass
 
-                if two_clicks:
-                    if pair_correct:
-                        to_send = protocol.build_message(protocol.get_correct_command(), b'correct! add 2 points.')
-                        protocol.send_message(to_send, players[turn].user_socket)
-                    else:
-                        to_send = protocol.build_message(protocol.get_worng_command(), b'wrong! no points will be added.')
-                        protocol.send_message(to_send, players[turn].user_socket)
-                        print(f"sent player {players[turn].pid} {str(to_send[:4])}")
-                    break
-                else:
-                    to_send = protocol.build_message(protocol.get_wait_command(), b'got board. Waiting for updates.')
-                    protocol.send_message(to_send, players[turn].user_socket)
-                    print(f"sent player {players[turn].pid} {str(to_send[:4])}")
+                to_send = protocol.build_message(protocol.get_wait_command(), b'got board. Waiting for updates.')
+                protocol.send_message(to_send, players[turn].user_socket)
+                print(f"sent player {players[turn].pid} {str(to_send[:4])}")
+
+            if pair_correct:
+                to_send = protocol.build_message(protocol.get_correct_command(), b'correct! add 2 points.')
+                protocol.send_message(to_send, players[turn].user_socket)
+            else:
+                to_send = protocol.build_message(protocol.get_worng_command(), b'wrong! no points will be added.')
+                protocol.send_message(to_send, players[turn].user_socket)
+                print(f"sent player {players[turn].pid} {str(to_send[:4])}")
+
         else:
             to_send = protocol.build_message(protocol.get_other_turn_command(), b'its other players turn.')
             protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
@@ -151,10 +150,13 @@ def handle_game():
                     list_up.append(card)
 
                 if count_up == 2:
+                    print("two clicks: " + str(two_clicks))
                     if list_up[0].title == list_up[1].title:
                         pair_correct = True
                         players[turn].points += 1
-                        board.cards_in_rand_location.remove(card)
+                        list_up[1].burnt = True
+                        list_up[0].burnt = True
+
                     else:
                         list_up[0].is_face_up = False
                         list_up[1].is_face_up = False

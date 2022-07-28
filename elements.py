@@ -7,6 +7,7 @@ class Card:
     def __init__(self, title):
         self.title = title
         self.is_face_up = False
+        self.burnt = False
 
     def __str__(self):
         return self.title
