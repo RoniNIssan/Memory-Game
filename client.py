@@ -271,9 +271,12 @@ def handle_game(sock: socket.socket):
     # data_update = threading.Thread(target=game_data_receiving)
     # data_update.start()
 
+    handle_communication(sock)  # board command
+    handle_communication(sock)  # turn command
+
     while True:
+        print("reset")
         switch_turns = False
-        handle_communication(sock)  # board command
         handle_communication(sock)  # turn command
 
         while my_turn and not switch_turns:
@@ -282,7 +285,6 @@ def handle_game(sock: socket.socket):
         while not my_turn and not switch_turns:
             handle_communication(sock)
 
-        print("reset")
     # data_update.join()
 
 
