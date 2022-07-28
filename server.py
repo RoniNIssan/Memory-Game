@@ -17,6 +17,8 @@ class Player:
         global turn
         if turn == self.pid:
             self.turn = True
+        else:
+            self.turn = False
 
 
 board = elements.Board(level=1, category="animals")
@@ -27,13 +29,15 @@ turn = 1
 lock = threading.Lock()
 update = False
 end_game = False
+two_clicks = False
+pair_correct = False
 ready_to_start = False
 is_board_randomized = False
 protocol = protocol_file.Protocol()
 
 
 def handle_client(player, tid=0):
-    global protocol, players, ready_to_start, level, board, is_board_randomized, turn, update
+    global protocol, players, ready_to_start, level, board, is_board_randomized, turn, update, two_clicks, pair_correct
     
     to_send = protocol.build_message(protocol.get_welcome_command(), b'successful')
     protocol.send_message(to_send, player.user_socket)
@@ -54,9 +58,14 @@ def handle_client(player, tid=0):
         continue
 
     turns_counter = 0
-    board_update = threading.Thread(target=handle_game)
 
-    while True:
+    while not end_game:
+        print("start round")
+        lock.acquire()
+        pair_correct = False
+        two_clicks = False
+        lock.release()
+
         to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
         protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
         print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
@@ -68,27 +77,47 @@ def handle_client(player, tid=0):
         if player.turn:
             to_send = protocol.build_message(protocol.get_my_turn_command(), b'its your turn.')
             protocol.send_message(to_send, players[turn].user_socket)
-            # print(f"sent player {players[turn].pid} {str(to_send[:4])}")
+            print(f"sent player {players[turn].pid} {str(to_send[:4])}")
 
             while True:
-                update = False
                 try:
                     handle_communication(player.user_socket)  # get data from user - update board
                     print("got new board")
                 except:
                     continue
+
+                if two_clicks:
+                    if pair_correct:
+                        to_send = protocol.build_message(protocol.get_correct_command(), b'correct! add 2 points.')
+                        protocol.send_message(to_send, players[turn].user_socket)
+                    else:
+                        to_send = protocol.build_message(protocol.get_worng_command(), b'wrong! no points will be added.')
+                        protocol.send_message(to_send, players[turn].user_socket)
+                        print(f"sent player {players[turn].pid} {str(to_send[:4])}")
+                    break
+                else:
+                    to_send = protocol.build_message(protocol.get_wait_command(), b'got board. Waiting for updates.')
+                    protocol.send_message(to_send, players[turn].user_socket)
+                    print(f"sent player {players[turn].pid} {str(to_send[:4])}")
         else:
             to_send = protocol.build_message(protocol.get_other_turn_command(), b'its other players turn.')
             protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
-            # print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
+            print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
 
             while True:
                 if update:
                     to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
                     protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
-                    # print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
+                    print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
+                    update = False
+                if two_clicks:
+                    to_send = protocol.build_message(protocol.get_worng_command(), b'switching turns.')
+                    protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
+                    print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
+                    break
 
-                # print("send new board")
+        turns_counter += 1
+        # time.sleep(1.2)
 
 
 def randomize_game(category):
@@ -109,12 +138,10 @@ def receive_data():
         print("sent other not turn msg")
 
 
-def handle_game(tid):
-    global turn, players, board
+def handle_game():
+    global turn, players, board, two_clicks, pair_correct
 
     while True:
-        two_clicks = False
-
         while not two_clicks:
             count_up = 0
             list_up = []
@@ -125,6 +152,7 @@ def handle_game(tid):
 
                 if count_up == 2:
                     if list_up[0].title == list_up[1].title:
+                        pair_correct = True
                         players[turn].points += 1
                         board.cards_in_rand_location.remove(card)
                     else:
@@ -160,8 +188,6 @@ def handle_communication(sock: socket.socket):
     received_messages(msg)
 
 
-
-
 def main():
     global players, end_game, ready_to_start, board, level
     IP = '0.0.0.0'
@@ -185,7 +211,7 @@ def main():
 
     ready_to_start = True
     randomize_game("animals")
-
+    handle_game()
 
     for t in threads:
         t.join()

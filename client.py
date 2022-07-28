@@ -14,15 +14,14 @@ port = ""
 ip = 0
 
 # booleans
+switch_turns = False
 click_on_card = False
 got_update = False
 ready_to_connect = False
 ready_to_start = False
 connected = False
 my_turn = False
-card_pressed = False
-message_complete = False
-my_socket = socket.socket()
+points = 0
 
 board = elements.Board(1, "animals")
 lock = threading.Lock()
@@ -59,7 +58,7 @@ def handle_graphics():
         ready_to_connect = True
 
         show_waiting_screen(screen)
-        display_board(screen)
+        print("showed intro")
         handle_gameplay_graphics(screen)
 
 
@@ -133,8 +132,11 @@ def show_waiting_screen(screen):
     global ready_to_start
     waiting_screen_vid = moviepy.editor.VideoFileClip(r"data\screens\waiting_screen.mp4")
 
+    print("start vid")
     while not ready_to_start:
         waiting_screen_vid.preview()
+
+    print("ready to start")
 
 
 def display_board(screen):
@@ -154,7 +156,9 @@ def display_board(screen):
 
 
 def handle_gameplay_graphics(screen):
-    global board, click_on_card, got_update
+    global board, click_on_card, got_update, switch_turns
+    print("handle graph")
+    display_board(screen)
 
     while True:
         if my_turn:
@@ -163,10 +167,11 @@ def handle_gameplay_graphics(screen):
 
                     for i in range(len(board.level.LEVEL_LOCATIONS)):
                         if board.level.LEVEL_LOCATIONS[i + 1].collidepoint(event.pos):
+                            lock.acquire()
                             click_on_card = True
+                            lock.release()
                             board.cards_in_rand_location[i].is_face_up = True
                             display_board(screen)
-                            click_on_card = False
                             break
         else:
             pygame.event.get()
@@ -176,6 +181,9 @@ def handle_gameplay_graphics(screen):
                 display_board(screen)
                 got_update = False
             lock.release()
+
+        if switch_turns:
+            display_board(screen)
 
 
 def keyboard_input(event, user_text):
@@ -187,7 +195,7 @@ def keyboard_input(event, user_text):
 
 
 def handle_msg(command: bytes, msg: bytes):
-    global lock, connected, ready_to_start, board, protocol, my_turn, got_update, lock
+    global username, connected, ready_to_start, board, protocol, my_turn, got_update, lock, switch_turns, points
 
     if command == protocol.get_welcome_command():
         if protocol.analyze_message(msg) == 'successful':
@@ -204,12 +212,11 @@ def handle_msg(command: bytes, msg: bytes):
         ready_to_start = True
 
     elif command == protocol.get_board_command():
-        # print("board")
         board = protocol_file.unpack(protocol.analyze_message(msg))
-
+        print(f"client {username} got board from server.")
         lock.acquire()
         got_update = True
-        print("update")
+        # print("update")
         lock.release()
 
     elif command == protocol.get_my_turn_command():
@@ -224,9 +231,18 @@ def handle_msg(command: bytes, msg: bytes):
         my_turn = False
         lock.release()
 
+    elif command == protocol.get_correct_command():
+        print(protocol.analyze_message(msg))
+        switch_turns = True
+        points += 2
+
+    elif command == protocol.get_correct_command():
+        print(protocol.analyze_message(msg))
+        switch_turns = True
+
 
 def received_messages(data_bytes: bytes, sock: socket.socket):
-    global protocol, message_complete
+    global protocol
     if data_bytes != b'':
         data_bytes = protocol.separate_messages(data_bytes)
 
@@ -238,12 +254,15 @@ def received_messages(data_bytes: bytes, sock: socket.socket):
 
 
 def handle_communication(sock: socket.socket):
-    msg = sock.recv(4096)
-    received_messages(msg, sock)
+    try:
+        msg = sock.recv(4096)
+        received_messages(msg, sock)
+    except:
+        return
 
 
 def handle_game(sock: socket.socket):
-    global my_turn, board, card_pressed, my_socket
+    global my_turn, board, switch_turns
 
     # TODO: receive data in a thread
     # my_socket = sock
@@ -251,15 +270,17 @@ def handle_game(sock: socket.socket):
     # data_update.start()
 
     while True:
+        switch_turns = False
         handle_communication(sock)  # board command
         handle_communication(sock)  # turn command
-        print("my_turn: " + str(my_turn))
 
-        while my_turn:
+        while my_turn and not switch_turns:
             check_for_board_updates(sock)
-        while not my_turn:
+
+        while not my_turn and not switch_turns:
             handle_communication(sock)
 
+        print("reset")
     # data_update.join()
 
 
@@ -271,6 +292,7 @@ def check_for_board_updates(sock: socket.socket):
         protocol.send_message(to_send, sock)
         print("sent board")
         click_on_card = False
+        handle_communication(sock)
 
 
 def main():
@@ -293,7 +315,6 @@ def main():
     while not ready_to_start:
         handle_communication(user_sock) # wait or ready message
     handle_game(user_sock)
-    print("received board")
 
 
 if __name__ == "__main__":
