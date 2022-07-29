@@ -271,21 +271,18 @@ def handle_game(sock: socket.socket):
     # data_update = threading.Thread(target=game_data_receiving)
     # data_update.start()
 
-    handle_communication(sock)  # board command
-    handle_communication(sock)  # turn command
-
     while True:
         print("reset")
         switch_turns = False
-        handle_communication(sock)  # turn command
 
         while my_turn and not switch_turns:
             check_for_board_updates(sock)
+            if switch_turns:
+                handle_communication(sock)  # turn command
 
         while not my_turn and not switch_turns:
+            print("is my turns: " + str(my_turn))
             handle_communication(sock)
-
-    # data_update.join()
 
 
 def check_for_board_updates(sock: socket.socket):
@@ -298,6 +295,8 @@ def check_for_board_updates(sock: socket.socket):
         click_on_card = False
         time.sleep(0.4)
         handle_communication(sock)
+    else:
+        print("no click")
 
 
 def main():
@@ -319,6 +318,10 @@ def main():
 
     while not ready_to_start:
         handle_communication(user_sock) # wait or ready message
+
+    handle_communication(user_sock)  # board command
+    handle_communication(user_sock)  # turn command
+
     handle_game(user_sock)
 
 
