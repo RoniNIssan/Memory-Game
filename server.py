@@ -67,8 +67,8 @@ def handle_client(player, tid=0):
         lock.release()
 
         to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
-        protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
-        print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
+        protocol.send_message(to_send, players[tid].user_socket)
+        print(f"sent player {players[tid].pid} {str(to_send[:4])}")
 
         turn = turns_counter % 2
 
@@ -94,6 +94,9 @@ def handle_client(player, tid=0):
                     protocol.send_message(to_send, players[turn].user_socket)
                     print(f"sent player {players[turn].pid} {str(to_send[:4])}")
 
+            lock.acquire()
+            two_clicks = True
+            lock.release()
             handle_game()
 
             if pair_correct:
@@ -109,15 +112,18 @@ def handle_client(player, tid=0):
             protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
             print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
 
+            count_updates = 0
             while True:
                 if update:
+                    count_updates += 1
                     to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
                     protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
                     print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
                     lock.acquire()
                     update = False
                     lock.release()
-                if two_clicks:
+
+                if count_updates >= 2:
                     to_send = protocol.build_message(protocol.get_worng_command(), b'switching turns.')
                     protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
                     print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
@@ -164,7 +170,6 @@ def handle_game():
             else:
                 list_up[0].is_face_up = False
                 list_up[1].is_face_up = False
-            two_clicks = True
             break
 
 
@@ -173,7 +178,9 @@ def handle_msg(command: bytes, msg: bytes):
     global ready_to_start, board, protocol, update, lock
 
     if command == protocol.get_board_command():
+        lock.acquire()
         update = True
+        lock.release()
         try:
             board = protocol_file.unpack(protocol.analyze_message(msg))
         except:
