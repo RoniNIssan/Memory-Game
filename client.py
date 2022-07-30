@@ -147,7 +147,7 @@ def display_board(screen):
 
     i = 0
     for card in board.cards_in_rand_location:
-        if card.is_face_up:
+        if card.is_face_up or card.burnt:
             card = pygame.image.load(
                         rf"data\screens\{board.category}\{card.title}.png")
             screen.blit(card, (board.level.LEVEL_LOCATIONS[i + 1].x, board.level.LEVEL_LOCATIONS[i + 1].y))
@@ -174,6 +174,7 @@ def handle_gameplay_graphics(screen):
                             board.cards_in_rand_location[i].is_face_up = True
                             display_board(screen)
                             break
+
         else:
             pygame.event.get()
 
@@ -235,12 +236,16 @@ def handle_msg(command: bytes, msg: bytes):
 
     elif command == protocol.get_correct_command():
         print(protocol.analyze_message(msg))
+        lock.acquire()
         switch_turns = True
+        lock.release()
         points += 2
 
     elif command == protocol.get_correct_command():
         print(protocol.analyze_message(msg))
+        lock.acquire()
         switch_turns = True
+        lock.release()
 
 
 def received_messages(data_bytes: bytes, sock: socket.socket):
@@ -260,6 +265,7 @@ def handle_communication(sock: socket.socket):
         msg = sock.recv(4096)
         received_messages(msg, sock)
     except:
+        print("skip receiving")
         return
 
 
@@ -273,16 +279,17 @@ def handle_game(sock: socket.socket):
 
     while True:
         print("reset")
-        switch_turns = False
 
         while my_turn and not switch_turns:
             check_for_board_updates(sock)
-            if switch_turns:
-                handle_communication(sock)  # turn command
 
         while not my_turn and not switch_turns:
             print("is my turns: " + str(my_turn))
             handle_communication(sock)
+
+        if switch_turns:
+            switch_turns = False
+            handle_communication(sock)  # turn command
 
 
 def check_for_board_updates(sock: socket.socket):

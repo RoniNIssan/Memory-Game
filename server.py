@@ -114,13 +114,14 @@ def handle_client(player, tid=0):
                     to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
                     protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
                     print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
+                    lock.acquire()
                     update = False
+                    lock.release()
                 if two_clicks:
                     to_send = protocol.build_message(protocol.get_worng_command(), b'switching turns.')
                     protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
                     print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
                     break
-
         turns_counter += 1
         # time.sleep(1.2)
 
@@ -165,6 +166,7 @@ def handle_game():
                 list_up[1].is_face_up = False
             two_clicks = True
             break
+
 
 def handle_msg(command: bytes, msg: bytes):
     """function handles messages from client """
