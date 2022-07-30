@@ -152,9 +152,6 @@ def display_board(screen):
                         rf"data\screens\{board.category}\{card.title}.png")
             screen.blit(card_image, (board.level.LEVEL_LOCATIONS[i + 1].x, board.level.LEVEL_LOCATIONS[i + 1].y))
             pygame.display.update()
-
-        if card.burnt:
-            print(card.title)
         i += 1
 
 
@@ -165,6 +162,11 @@ def handle_gameplay_graphics(screen):
 
     while True:
         if my_turn:
+            turn_image = pygame.image.load(
+                rf"data\screens\my_turn.png")
+            screen.blit(turn_image, (board.TITLE_POS[board.level.level].x, board.TITLE_POS[board.level.level].y))
+            pygame.display.update()
+
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
 
@@ -180,6 +182,11 @@ def handle_gameplay_graphics(screen):
                             break
 
         else:
+            turn_image = pygame.image.load(
+                rf"data\screens\others_turn.png")
+            screen.blit(turn_image, (board.TITLE_POS[board.level.level].x, board.TITLE_POS[board.level.level].y))
+            pygame.display.update()
+
             pygame.event.get()
 
             lock.acquire()
@@ -307,7 +314,8 @@ def check_for_board_updates(sock: socket.socket):
         time.sleep(0.4)
         handle_communication(sock)
     else:
-        print("no click")
+        # print("no click")
+        pass
 
 
 def main():

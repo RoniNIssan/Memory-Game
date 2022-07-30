@@ -165,7 +165,10 @@ def handle_game():
         if count_up == 2:
             print("two clicks: " + str(two_clicks))
             if list_up[0].title == list_up[1].title:
+                lock.acquire()
                 pair_correct = True
+                lock.release()
+                print("pair correct")
                 players[turn].points += 1
                 list_up[1].burnt = True
                 list_up[0].burnt = True
@@ -234,9 +237,8 @@ def main():
 
     # handle_game()
     while not end_game:
-        if update:
-            for card in board.cards_in_rand_location:
-                print(f"card {card.title} is face {card.is_face_up}")
+        continue
+
     for t in threads:
         t.join()
     server_socket.close()

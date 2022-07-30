@@ -90,6 +90,8 @@ class Board:
         self.category = "animals"
         self.level = Level(level)
         self.pile = Pile(category, self.level.pile_size).rand_pile
+        self.TITLE_POS = {1: pygame.Rect(299, 0, 256, 57),
+                          2: pygame.Rect(299, 0, 256, 57)}
         self.cards_in_rand_location = self.build_board()
 
     def build_board(self):
