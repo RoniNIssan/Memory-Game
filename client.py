@@ -148,10 +148,13 @@ def display_board(screen):
     i = 0
     for card in board.cards_in_rand_location:
         if card.is_face_up or card.burnt:
-            card = pygame.image.load(
+            card_image = pygame.image.load(
                         rf"data\screens\{board.category}\{card.title}.png")
-            screen.blit(card, (board.level.LEVEL_LOCATIONS[i + 1].x, board.level.LEVEL_LOCATIONS[i + 1].y))
+            screen.blit(card_image, (board.level.LEVEL_LOCATIONS[i + 1].x, board.level.LEVEL_LOCATIONS[i + 1].y))
             pygame.display.update()
+
+        if card.burnt:
+            print(card.title)
         i += 1
 
 
@@ -167,7 +170,8 @@ def handle_gameplay_graphics(screen):
 
                     for i in range(len(board.level.LEVEL_LOCATIONS)):
                         if board.level.LEVEL_LOCATIONS[i + 1].collidepoint(event.pos) and\
-                                not board.cards_in_rand_location[i].burnt:
+                                not board.cards_in_rand_location[i].burnt and\
+                                not board.cards_in_rand_location[i].is_face_up:
                             lock.acquire()
                             click_on_card = True
                             lock.release()

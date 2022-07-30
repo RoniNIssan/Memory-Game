@@ -60,6 +60,7 @@ def handle_client(player, tid=0):
     turns_counter = 0
 
     while not end_game:
+
         print("start round")
         lock.acquire()
         pair_correct = False
@@ -129,6 +130,8 @@ def handle_client(player, tid=0):
                     print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
                     break
         turns_counter += 1
+        while not is_board_randomized:
+            continue
         # time.sleep(1.2)
 
 
@@ -151,11 +154,11 @@ def receive_data():
 
 
 def handle_game():
-    global turn, players, board, two_clicks, pair_correct
+    global turn, players, board, two_clicks, pair_correct, is_board_randomized
     count_up = 0
     list_up = []
     for card in board.cards_in_rand_location:
-        if card.is_face_up:
+        if card.is_face_up and not card.burnt:
             count_up += 1
             list_up.append(card)
 
@@ -170,6 +173,10 @@ def handle_game():
             else:
                 list_up[0].is_face_up = False
                 list_up[1].is_face_up = False
+
+            lock.acquire()
+            is_board_randomized = True
+            lock.release()
             break
 
 
@@ -202,7 +209,7 @@ def handle_communication(sock: socket.socket):
 
 
 def main():
-    global players, end_game, ready_to_start, board, level
+    global players, end_game, ready_to_start, board, level, update
     IP = '0.0.0.0'
     PORT = 3339
     TIMEOUT = 0.02
@@ -227,7 +234,9 @@ def main():
 
     # handle_game()
     while not end_game:
-        continue
+        if update:
+            for card in board.cards_in_rand_location:
+                print(f"card {card.title} is face {card.is_face_up}")
     for t in threads:
         t.join()
     server_socket.close()
