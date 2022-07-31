@@ -13,7 +13,7 @@ class Player:
         self.category = "animals"
         self.turn = False
         self.win = False
-        self.loose = False
+        self.tie = False
         self.points = 0
         self.disconnected = False
 
@@ -160,20 +160,22 @@ def handle_client(player, tid=0):
             protocol.send_message(to_send, player.user_socket)
             print(f"sent player {player.pid} {str(to_send[:4])}")
 
-            if player.win and not player.loose:
+            if player.win:
                 to_send = protocol.build_message(protocol.get_win_command(), b'Well done!')
                 protocol.send_message(to_send, player.user_socket)
                 print(f"sent player {player.pid} {str(to_send[:4])}")
 
-            elif player.loose and not player.win:
-                to_send = protocol.build_message(protocol.get_win_command(), b'Do better next time!')
+            elif not player.win and not player.tie:
+                to_send = protocol.build_message(protocol.get_loose_command(), b'Do better next time!')
                 protocol.send_message(to_send, player.user_socket)
                 print(f"sent player {player.pid} {str(to_send[:4])}")
 
-            else:
+            elif player.tie:
                 to_send = protocol.build_message(protocol.get_tie_command(), b'great effort!')
                 protocol.send_message(to_send, player.user_socket)
                 print(f"sent player {player.pid} {str(to_send[:4])}")
+
+            break
 
         else:
             to_send = protocol.build_message(protocol.get_end_command(), b'no players found matching category.')
@@ -196,17 +198,16 @@ def check_victory(last_index):
     lock.acquire()
     if players[last_index - 1].points > players[last_index].points:
         players[last_index - 1].win = True
-        players[last_index].loose = True
+        players[last_index].win = False
 
     elif players[last_index - 1].points < players[last_index].points:
         players[last_index].win = True
-        players[last_index - 1].loose = True
+        players[last_index - 1].win = False
 
     else:
-        players[last_index - 1].win = True
-        players[last_index - 1].loose = True
-        players[last_index].win = True
-        players[last_index].loose = True
+        players[last_index - 1].tie = True
+        players[last_index].tie = True
+
     lock.release()
 
 
@@ -309,8 +310,11 @@ def received_messages(data_bytes: bytes, player=None):
 
 
 def handle_communication(sock: socket.socket, player=None):
-    msg = sock.recv(1024)
-    received_messages(msg, player)
+    try:
+        msg = sock.recv(1024)
+        received_messages(msg, player)
+    except:
+        return
 
 
 def main():

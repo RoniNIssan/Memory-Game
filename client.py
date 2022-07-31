@@ -24,7 +24,7 @@ my_turn = False
 end_game = False
 reset = False
 win = False
-loose = False
+tie = False
 running = True
 got_turn = False
 points = 0
@@ -204,19 +204,18 @@ def show_waiting_screen(screen):
 
 
 def show_exit_screen(screen):
-    global win, loose, end_game, ready_to_start
+    global win, tie, end_game, ready_to_start
 
-    if end_game and ready_to_start:
-        exit_screen = pygame.image.load(rf"data\screens\no_match.png")
-    else:
-        while not (win or loose):
-            continue
-        if win and not loose:
-            exit_screen = pygame.image.load(rf"data\screens\win.png")
-        elif loose and not win:
-            exit_screen = pygame.image.load(rf"data\screens\loose.png")
+    if end_game:
+        if ready_to_start:
+            exit_screen = pygame.image.load(rf"data\screens\no_match.png")
         else:
-            exit_screen = pygame.image.load(rf"data\screens\tie.png")
+            if win:
+                exit_screen = pygame.image.load(rf"data\screens\win.png")
+            elif not win:
+                exit_screen = pygame.image.load(rf"data\screens\loose.png")
+            elif tie:
+                exit_screen = pygame.image.load(rf"data\screens\tie.png")
 
     screen.blit(exit_screen, (0, 0))
     pygame.display.update()
@@ -300,7 +299,7 @@ def keyboard_input(event, user_text):
 
 def handle_msg(command: bytes, msg: bytes):
     global username, connected, ready_for_category, ready_to_start, board, protocol, my_turn, got_update, lock,\
-        switch_turns, points, win, loose, end_game
+        switch_turns, points, win, tie, end_game
 
     if command == protocol.get_welcome_command():
         if protocol.analyze_message(msg) == 'successful':
@@ -367,15 +366,14 @@ def handle_msg(command: bytes, msg: bytes):
     elif command == protocol.get_loose_command():
         print(protocol.analyze_message(msg))
         lock.acquire()
-        loose = True
+        win = False
         lock.release()
 
     elif command == protocol.get_tie_command():
         print(protocol.analyze_message(msg))
         lock.acquire()
         print("tie")
-        loose = True
-        win = True
+        tie = True
         lock.release()
 
 
@@ -487,6 +485,7 @@ def main():
         user_sock.close()
     graphics.join()
     exit()
+
 
 if __name__ == "__main__":
     main()
