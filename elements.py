@@ -31,13 +31,63 @@ class CardsInCategroy:
                         Card("bee"),
                         Card("spider"),
                         Card("elephant")]
-    #         TODO: add more categories
+
+        self.food = [Card("burger"),
+                     Card("cheese"),
+                     Card("chips"),
+                     Card("chocolate"),
+                     Card("falafel"),
+                     Card("ice_cream"),
+                     Card("pasta"),
+                     Card("pie"),
+                     Card("pizza"),
+                     Card("salad"),
+                     Card("sushi")]
+
+        self.planets = [Card("earth"),
+                        Card("jupiter"),
+                        Card("mars"),
+                        Card("moon"),
+                        Card("saturn"),
+                        Card("sun"),
+                        Card("uranus")]
+
+        self.sports = [Card("ballet"),
+                       Card("baseball"),
+                       Card("basketball"),
+                       Card("russle"),
+                       Card("soccer"),
+                       Card("swim"),
+                       Card("tennis"),
+                       Card("volleyball")]
+
+        self.transportation = [Card("airplane"),
+                               Card("boat"),
+                               Card("bicycle"),
+                               Card("car"),
+                               Card("helicopter"),
+                               Card("hot_air_balloon"),
+                               Card("train")]
+
         self.empty = []
 
     def get_pile(self):
         if self.category == "animals":
             return self.animals
-        if self.category == "empty":
+
+        elif self.category == "food":
+            return self.food
+
+        elif self.category == "planets":
+            return self.planets
+
+        elif self.category == "sports":
+            return self.sports
+
+        elif self.category == "transportation":
+            return self.transportation
+
+        elif self.category == "empty":
             return self.empty
 
     def __str__(self):
@@ -51,15 +101,7 @@ class Pile:
 
         self.pile = CardsInCategroy(category).get_pile()
         self.rand_pile = CardsInCategroy("empty").get_pile()
-
-        # game_randomize_pile = []
-        # random_list = random.sample(range(0, self.pile_size), int(self.pile_size / 2))
-        # for index in random_list:
-        #     game_randomize_pile.append(self.pile[index - 1])
-        # self.rand_pile = game_randomize_pile
-
         self.rand_pile = random.sample(self.pile, int(self.pile_size / 2))
-
 
 
 class Level:

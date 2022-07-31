@@ -18,7 +18,7 @@ got_update = False
 ready_to_connect = False
 ready_to_start = False
 ready_for_category = False
-category = b'animals'
+category = 'animals'
 connected = False
 my_turn = False
 end_game = False
@@ -58,11 +58,7 @@ def handle_graphics():
             if event.type == pygame.QUIT:
                 running = False
                 pygame.quit()
-        # TODO: uncomment show_intro_screen + delete global ip, port, username
         show_intro_screen(screen)
-        # port = 3339
-        # ip = "127.0.0.1"
-        # username = "bob"
         ready_to_connect = True
 
         show_chooser_screen(screen)
@@ -75,8 +71,7 @@ def handle_graphics():
         reset = True
         time.sleep(200)
         # TODO: enabling more rounds - running != False
-        running = False
-
+        # running = False
 
 
 def show_intro_screen(screen):
@@ -160,35 +155,35 @@ def show_chooser_screen(screen):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if animals.collidepoint(event.pos):
                     lock.acquire()
-                    category = b'animals'
+                    category = 'animals'
                     ready_for_category = True
                     lock.release()
                     return
 
                 elif transportation.collidepoint(event.pos):
                     lock.acquire()
-                    category = b'transportation'
+                    category = 'transportation'
                     ready_for_category = True
                     lock.release()
                     return
 
                 elif food.collidepoint(event.pos):
                     lock.acquire()
-                    category = b'food'
+                    category = 'food'
                     ready_for_category = True
                     lock.release()
                     return
 
                 elif sports.collidepoint(event.pos):
                     lock.acquire()
-                    category = b'sports'
+                    category = 'sports'
                     ready_for_category = True
                     lock.release()
                     return
 
                 elif planets.collidepoint(event.pos):
                     lock.acquire()
-                    category = b'planets'
+                    category = 'planets'
                     ready_for_category = True
                     lock.release()
                     return
@@ -227,7 +222,7 @@ def show_exit_screen(screen):
 
 
 def display_board(screen):
-    global board
+    global board, category
     base_screen = pygame.image.load(rf"data\screens\level_{board.level.level}.jpg")
     screen.blit(base_screen, (0, 0))
     pygame.display.update()
@@ -240,7 +235,7 @@ def display_board(screen):
     for card in board.cards_in_rand_location:
         if card.is_face_up or card.burnt:
             card_image = pygame.image.load(
-                        rf"data\screens\{board.category}\{card.title}.png")
+                        rf"data\screens\{str(category)}\{card.title}.png")
             screen.blit(card_image, (board.level.LEVEL_LOCATIONS[i + 1].x, board.level.LEVEL_LOCATIONS[i + 1].y))
             pygame.display.update()
         i += 1
@@ -436,7 +431,6 @@ def check_for_board_updates(sock: socket.socket):
         time.sleep(0.4)
         handle_communication(sock)
     else:
-        # print("no click")
         pass
 
 
@@ -478,7 +472,7 @@ def main():
                 continue
 
             print("category: " + str(category))
-            to_send = protocol.build_message(protocol.get_category_command(), category)
+            to_send = protocol.build_message(protocol.get_category_command(), category.encode())
             protocol.send_message(to_send, user_sock)
             ready_for_category = False
 
@@ -497,9 +491,9 @@ def main():
                 continue
         user_sock.close()
     graphics.join()
-    print("close thread")
-    pygame.display.quit()
-    pygame.quit()
+    # print("close thread")
+    # pygame.display.quit()
+    # pygame.quit()
     exit()
 
 
