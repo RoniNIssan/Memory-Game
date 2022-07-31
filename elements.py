@@ -58,6 +58,7 @@ class Pile:
             game_randomize_pile.append(self.pile[index - 1])
         self.rand_pile = game_randomize_pile
 
+
 class Level:
     def __init__(self, level):
         self.level = level

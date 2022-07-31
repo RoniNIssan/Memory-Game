@@ -1,10 +1,8 @@
 import socket
 import threading
 import time
-
 import pygame
 import moviepy.editor
-import pickle
 import protocol_file
 import elements
 
@@ -19,9 +17,12 @@ click_on_card = False
 got_update = False
 ready_to_connect = False
 ready_to_start = False
+ready_for_category = False
+category = b'animals'
 connected = False
 my_turn = False
 end_game = False
+reset = False
 win = False
 loose = False
 running = True
@@ -38,6 +39,8 @@ def handle_graphics():
     global ip
     global username
     global running
+    global end_game
+    global reset
 
     # define screen size
     WINDOW_SIZE = (854, 480)
@@ -63,11 +66,14 @@ def handle_graphics():
         # username = "bob"
         ready_to_connect = True
 
+        show_chooser_screen(screen)
         show_waiting_screen(screen)
         print("showed intro")
-        handle_gameplay_graphics(screen)
-        show_exit_screen(screen)
+        if not end_game:
+            handle_gameplay_graphics(screen)
         print("end!")
+        show_exit_screen(screen)
+        reset = True
 
 
 def show_intro_screen(screen):
@@ -90,7 +96,7 @@ def show_intro_screen(screen):
     ip = ""
 
     # type - in user font
-    base_font = pygame.font.Font(None, 25)
+    base_font = pygame.font.Font(rf"data\fonts\Heebo-ExtraBold.ttf", 25)
 
     while True:
         pygame.display.update()
@@ -134,27 +140,83 @@ def show_intro_screen(screen):
                 pygame.display.flip()
 
 
+def show_chooser_screen(screen):
+    global category, lock, ready_for_category
+    chooser_screen = pygame.image.load(r"data\screens\categories.png")
+    screen.blit(chooser_screen, (0, 0))
+
+    animals = pygame.Rect(66, 122, 144, 164)
+    transportation = pygame.Rect(354, 122, 144, 164)
+    food = pygame.Rect(641, 122, 144, 164)
+    sports = pygame.Rect(210, 266, 144, 164)
+    planets = pygame.Rect(500, 266, 144, 164)
+
+    while True:
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if animals.collidepoint(event.pos):
+                    lock.acquire()
+                    category = b'animals'
+                    ready_for_category = True
+                    lock.release()
+                    return
+
+                elif transportation.collidepoint(event.pos):
+                    lock.acquire()
+                    category = b'transportation'
+                    ready_for_category = True
+                    lock.release()
+                    return
+
+                elif food.collidepoint(event.pos):
+                    lock.acquire()
+                    category = b'food'
+                    ready_for_category = True
+                    lock.release()
+                    return
+
+                elif sports.collidepoint(event.pos):
+                    lock.acquire()
+                    category = b'sports'
+                    ready_for_category = True
+                    lock.release()
+                    return
+
+                elif planets.collidepoint(event.pos):
+                    lock.acquire()
+                    category = b'planets'
+                    ready_for_category = True
+                    lock.release()
+                    return
+
+
 def show_waiting_screen(screen):
-    global ready_to_start
+    global ready_to_start, end_game
     waiting_screen_vid = moviepy.editor.VideoFileClip(r"data\screens\waiting_screen.mp4")
 
     print("start vid")
-    while not ready_to_start:
+    while not ready_to_start and not end_game:
+        print("stack")
         waiting_screen_vid.preview()
 
     print("ready to start")
 
 
 def show_exit_screen(screen):
-    while not (win or loose):
-        continue
+    global win, loose, end_game, ready_to_start
 
-    if win and not loose:
-        exit_screen = pygame.image.load(rf"data\screens\win.png")
-    elif loose and not win:
-        exit_screen = pygame.image.load(rf"data\screens\loose.png")
+    if end_game and ready_to_start:
+        exit_screen = pygame.image.load(rf"data\screens\no_match.png")
     else:
-        exit_screen = pygame.image.load(rf"data\screens\tie.png")
+        while not (win or loose):
+            continue
+        if win and not loose:
+            exit_screen = pygame.image.load(rf"data\screens\win.png")
+        elif loose and not win:
+            exit_screen = pygame.image.load(rf"data\screens\loose.png")
+        else:
+            exit_screen = pygame.image.load(rf"data\screens\tie.png")
 
     screen.blit(exit_screen, (0, 0))
     pygame.display.update()
@@ -237,21 +299,24 @@ def keyboard_input(event, user_text):
 
 
 def handle_msg(command: bytes, msg: bytes):
-    global username, connected, ready_to_start, board, protocol, my_turn, got_update, lock,\
+    global username, connected, ready_for_category, ready_to_start, board, protocol, my_turn, got_update, lock,\
         switch_turns, points, win, loose, end_game
 
     if command == protocol.get_welcome_command():
         if protocol.analyze_message(msg) == 'successful':
             connected = True
 
+    elif command == protocol.get_category_command():
+        print(protocol.analyze_message(msg))
+        ready_for_category = True
+
     elif command == protocol.get_wait_command():
         protocol.analyze_message(msg)
-        # print(protocol.analyze_message(msg))
         ready_to_start = False
 
     elif command == protocol.get_ready_command():
+        print(protocol.analyze_message(msg))
         protocol.analyze_message(msg)
-        # print(protocol.analyze_message(msg))
         ready_to_start = True
 
     elif command == protocol.get_board_command():
@@ -287,8 +352,11 @@ def handle_msg(command: bytes, msg: bytes):
         lock.release()
 
     elif command == protocol.get_end_command():
+        print("got end")
         print(protocol.analyze_message(msg))
+        lock.acquire()
         end_game = True
+        lock.release()
 
     elif command == protocol.get_win_command():
         print(protocol.analyze_message(msg))
@@ -305,7 +373,7 @@ def handle_msg(command: bytes, msg: bytes):
     elif command == protocol.get_tie_command():
         print(protocol.analyze_message(msg))
         lock.acquire()
-        print("loose and win")
+        print("tie")
         loose = True
         win = True
         lock.release()
@@ -328,7 +396,7 @@ def handle_communication(sock: socket.socket):
         msg = sock.recv(4096)
         received_messages(msg, sock)
     except:
-        print("skip receiving")
+        # print("skip receiving")
         return
 
 
@@ -369,7 +437,8 @@ def check_for_board_updates(sock: socket.socket):
 
 
 def main():
-    global ready_to_connect, port, ip, connected, ready_to_start, running, got_turn
+    global ready_to_connect, port, ip, connected, ready_to_start, running, \
+        protocol, category, ready_for_category, end_game, reset
 
     graphics = threading.Thread(target=handle_graphics)
     graphics.start()
@@ -380,23 +449,44 @@ def main():
             if ready_to_connect:
                 user_sock.connect((ip, port))
                 handle_communication(user_sock)  # welcome message
-
                 if connected:
                     break
             else:
                 continue
+        while True:
+            end_game = False
+            while not ready_for_category:
+                handle_communication(user_sock)  # category command
+                continue
 
-        while not ready_to_start:
-            handle_communication(user_sock)  # wait or ready message
-        handle_communication(user_sock)  # board
-        handle_communication(user_sock)  # turn
-        handle_game(user_sock)
-        handle_communication(user_sock)  # win or loose
+            lock.acquire()
+            ready_for_category = False
+            lock.release()
 
+            while not ready_for_category:
+                continue
+
+            print("category: " + str(category))
+            to_send = protocol.build_message(protocol.get_category_command(), category)
+            protocol.send_message(to_send, user_sock)
+            ready_for_category = False
+
+            while not ready_to_start and not end_game:
+                handle_communication(user_sock)  # wait, ready or end command
+
+            if not end_game:
+                handle_communication(user_sock)  # board
+                handle_communication(user_sock)  # turn
+                handle_game(user_sock)
+                handle_communication(user_sock)  # win or loose
+                break
+            else:
+                while not reset:
+                    continue
+                continue
         user_sock.close()
     graphics.join()
     exit()
-
 
 if __name__ == "__main__":
     main()

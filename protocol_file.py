@@ -8,6 +8,7 @@ class Protocol:
     def __init__(self):
         self.COMMANDS = {
             "WELCOME": b'WLCM',
+            "CATEGORY": b'CTGY',
             "WAIT": b'WAIT',
             "READY": b'REDY',
             "BOARD": b'BORD',
@@ -25,6 +26,9 @@ class Protocol:
 
     def get_welcome_command(self):
         return self.COMMANDS["WELCOME"]
+
+    def get_category_command(self):
+        return self.COMMANDS["CATEGORY"]
 
     def get_wait_command(self):
         return self.COMMANDS["WAIT"]
@@ -48,10 +52,10 @@ class Protocol:
         return self.COMMANDS["WRONG"]
 
     def get_win_command(self):
-        return self.COMMANDS["WRONG"]
+        return self.COMMANDS["WIN"]
 
     def get_loose_command(self):
-        return self.COMMANDS["WRONG"]
+        return self.COMMANDS["LOOSE"]
 
     def get_tie_command(self):
         return self.COMMANDS["TIE"]
@@ -69,6 +73,9 @@ class Protocol:
         command = data[:4]
 
         if command == self.COMMANDS["WELCOME"]:
+            return data[5:].decode('UTF-8')
+
+        if command == self.COMMANDS["CATEGORY"]:
             return data[5:].decode('UTF-8')
 
         if command == self.COMMANDS["WAIT"]:
