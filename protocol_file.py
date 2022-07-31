@@ -2,6 +2,7 @@ import socket
 import pickle
 import elements
 
+
 class Protocol:
 
     def __init__(self):
@@ -13,7 +14,11 @@ class Protocol:
             "MY TURN": b'MTRN',
             "OTHER TURN": b'OTRN',
             "CORRECT": b'CRCT',
-            "WRONG": b'WRNG'
+            "WRONG": b'WRNG',
+            "WIN": b'WING',
+            "LOOSE": b'LOST',
+            "TIE": b'TIEG',
+            "END": b'ENDG'
         }
         self.SEPARATOR = b'#'
         self.DECLARE_END = b'$'
@@ -39,12 +44,22 @@ class Protocol:
     def get_correct_command(self):
         return self.COMMANDS["CORRECT"]
 
-    def get_worng_command(self):
+    def get_wrong_command(self):
         return self.COMMANDS["WRONG"]
 
+    def get_win_command(self):
+        return self.COMMANDS["WRONG"]
+
+    def get_loose_command(self):
+        return self.COMMANDS["WRONG"]
+
+    def get_tie_command(self):
+        return self.COMMANDS["TIE"]
+
+    def get_end_command(self):
+        return self.COMMANDS["END"]
+
     def build_message(self, command: bytes, msg: bytes):
-        # message = command + self.SEPARATOR + msg + self.DECLARE_END
-        # return bytes(len(message).zf) + self.SEPARATOR + message
         return command + self.SEPARATOR + msg + self.DECLARE_END
 
     def send_message(self, message: bytes, sock: socket.socket):
@@ -75,6 +90,18 @@ class Protocol:
             return data[5:].decode('UTF-8')
 
         if command == self.COMMANDS["WRONG"]:
+            return data[5:].decode('UTF-8')
+
+        if command == self.COMMANDS["WIN"]:
+            return data[5:].decode('UTF-8')
+
+        if command == self.COMMANDS["LOOSE"]:
+            return data[5:].decode('UTF-8')
+
+        if command == self.COMMANDS["TIE"]:
+            return data[5:].decode('UTF-8')
+
+        if command == self.COMMANDS["END"]:
             return data[5:].decode('UTF-8')
 
     def separate_messages(self, data_bytes: bytes):

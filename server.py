@@ -11,7 +11,10 @@ class Player:
         self.user_socket = user_socket
         self.pid = pid
         self.turn = False
+        self.win = False
+        self.loose = False
         self.points = 0
+        self.disconnected = False
 
     def is_turn(self):
         global turn
@@ -25,6 +28,7 @@ board = elements.Board(level=1, category="animals")
 level = 1
 players = []
 turn = 1
+count_burnt = 0
 
 lock = threading.Lock()
 update = False
@@ -37,7 +41,7 @@ protocol = protocol_file.Protocol()
 
 
 def handle_client(player, tid=0):
-    global protocol, players, ready_to_start, level, board, is_board_randomized, turn, update, two_clicks, pair_correct
+    global protocol, players, ready_to_start, level, board, is_board_randomized, turn, update, two_clicks, pair_correct, count_burnt
     
     to_send = protocol.build_message(protocol.get_welcome_command(), b'successful')
     protocol.send_message(to_send, player.user_socket)
@@ -53,11 +57,11 @@ def handle_client(player, tid=0):
     protocol.send_message(to_send, player.user_socket)
     print(f"sent player {player.pid} {str(to_send[:4])}")
 
-
     while not is_board_randomized:
         continue
 
     turns_counter = 0
+    count_burnt = 0
 
     while not end_game:
 
@@ -104,7 +108,7 @@ def handle_client(player, tid=0):
                 to_send = protocol.build_message(protocol.get_correct_command(), b'correct! add 2 points.')
                 protocol.send_message(to_send, players[turn].user_socket)
             else:
-                to_send = protocol.build_message(protocol.get_worng_command(), b'wrong! no points will be added.')
+                to_send = protocol.build_message(protocol.get_wrong_command(), b'wrong! no points will be added.')
                 protocol.send_message(to_send, players[turn].user_socket)
                 print(f"sent player {players[turn].pid} {str(to_send[:4])}")
 
@@ -125,14 +129,53 @@ def handle_client(player, tid=0):
                     lock.release()
 
                 if count_updates >= 2:
-                    to_send = protocol.build_message(protocol.get_worng_command(), b'switching turns.')
+                    to_send = protocol.build_message(protocol.get_wrong_command(), b'switching turns.')
                     protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
                     print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
                     break
         turns_counter += 1
         while not is_board_randomized:
+            if end_game:
+                print("endgame")
+                break
             continue
-        # time.sleep(1.2)
+
+    to_send = protocol.build_message(protocol.get_end_command(), b'Almost closing')
+    protocol.send_message(to_send, players[tid].user_socket)
+    print(f"sent player {players[tid].pid} {str(to_send[:4])}")
+
+    if players[tid].win and not players[tid].loose:
+        to_send = protocol.build_message(protocol.get_win_command(), b'Well done!')
+        protocol.send_message(to_send, players[tid].user_socket)
+        print(f"sent player {players[tid].pid} {str(to_send[:4])}")
+
+    elif players[tid].loose and not players[tid].win:
+        to_send = protocol.build_message(protocol.get_win_command(), b'Do better next time!')
+        protocol.send_message(to_send, players[tid].user_socket)
+        print(f"sent player {players[tid].pid} {str(to_send[:4])}")
+
+    else:
+        to_send = protocol.build_message(protocol.get_tie_command(), b'great effort!')
+        protocol.send_message(to_send, players[tid].user_socket)
+        print(f"sent player {players[tid].pid} {str(to_send[:4])}")
+
+    players[tid].user_socket.close()
+    players[tid].disconnected = True
+
+
+def check_victory():
+    global players
+
+    if players[0].points > players[1].points:
+        players[0].win = True
+    elif players[0].points < players[1].points:
+        players[1].win = True
+    else:
+        players[0].win = True
+        players[0].loose = True
+        players[1].win = True
+        players[1].loose = True
+
 
 
 def randomize_game(category):
@@ -154,10 +197,13 @@ def receive_data():
 
 
 def handle_game():
-    global turn, players, board, two_clicks, pair_correct, is_board_randomized
+    global turn, players, board, two_clicks, pair_correct, is_board_randomized, count_burnt, end_game
     count_up = 0
     list_up = []
     for card in board.cards_in_rand_location:
+        lock.acquire()
+        is_board_randomized = False
+        lock.release()
         if card.is_face_up and not card.burnt:
             count_up += 1
             list_up.append(card)
@@ -167,19 +213,38 @@ def handle_game():
             if list_up[0].title == list_up[1].title:
                 lock.acquire()
                 pair_correct = True
-                lock.release()
                 print("pair correct")
                 players[turn].points += 1
+                count_burnt += 2
                 list_up[1].burnt = True
                 list_up[0].burnt = True
+                lock.release()
 
             else:
+                lock.acquire()
                 list_up[0].is_face_up = False
                 list_up[1].is_face_up = False
+                lock.release()
 
-            lock.acquire()
-            is_board_randomized = True
-            lock.release()
+            if count_burnt == board.level.pile_size:
+
+                # if board.level.level != 2:  # if current level is not equal to final level
+                #     lock.acquire()
+                #     end_level = True
+                #     lock.release()
+                # else:
+                #     lock.acquire()
+                #     end_game = True
+                #     lock.release()
+                lock.acquire()
+                end_game = True
+                # is_board_randomized = True
+                lock.release()
+            else:
+                lock.acquire()
+                is_board_randomized = True
+                print("no enough burnt:" + str(count_burnt))
+                lock.release()
             break
 
 
@@ -237,6 +302,11 @@ def main():
 
     # handle_game()
     while not end_game:
+        continue
+
+    check_victory()
+
+    while not players[0].disconnected and not players[1].disconnected:
         continue
 
     for t in threads:

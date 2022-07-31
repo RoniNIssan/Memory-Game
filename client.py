@@ -21,16 +21,23 @@ ready_to_connect = False
 ready_to_start = False
 connected = False
 my_turn = False
+end_game = False
+win = False
+loose = False
+running = True
+got_turn = False
 points = 0
 
 board = elements.Board(1, "animals")
 lock = threading.Lock()
+
 
 def handle_graphics():
     global ready_to_connect
     global port
     global ip
     global username
+    global running
 
     # define screen size
     WINDOW_SIZE = (854, 480)
@@ -43,23 +50,24 @@ def handle_graphics():
     pygame.display.set_caption("Memory Game")
     # icon = pygame.image.load()
     # pygame.display.set_icon(icon)
-    running = True
 
     while running:
-        # pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+                pygame.quit()
         # TODO: uncomment show_intro_screen + delete global ip, port, username
-        # show_intro_screen(screen)
-        port = 3339
-        ip = "127.0.0.1"
-        username = "bob"
+        show_intro_screen(screen)
+        # port = 3339
+        # ip = "127.0.0.1"
+        # username = "bob"
         ready_to_connect = True
 
         show_waiting_screen(screen)
         print("showed intro")
         handle_gameplay_graphics(screen)
+        show_exit_screen(screen)
+        print("end!")
 
 
 def show_intro_screen(screen):
@@ -87,8 +95,6 @@ def show_intro_screen(screen):
     while True:
         pygame.display.update()
         for event in pygame.event.get():
-            # if event.type == pygame.QUIT:
-            #     running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if username_rect.collidepoint(event.pos):
                     writing_username = True
@@ -139,11 +145,32 @@ def show_waiting_screen(screen):
     print("ready to start")
 
 
+def show_exit_screen(screen):
+    while not (win or loose):
+        continue
+
+    if win and not loose:
+        exit_screen = pygame.image.load(rf"data\screens\win.png")
+    elif loose and not win:
+        exit_screen = pygame.image.load(rf"data\screens\loose.png")
+    else:
+        exit_screen = pygame.image.load(rf"data\screens\tie.png")
+
+    screen.blit(exit_screen, (0, 0))
+    pygame.display.update()
+
+    time.sleep(2)
+
+
 def display_board(screen):
     global board
     base_screen = pygame.image.load(rf"data\screens\level_{board.level.level}.jpg")
     screen.blit(base_screen, (0, 0))
     pygame.display.update()
+
+    font = pygame.font.Font(r"data\fonts\Heebo-ExtraBold.ttf", 32)
+    text = font.render(f'points: {points}', True, (255, 255, 255))
+    screen.blit(text, board.POINT_POS[board.level.level])
 
     i = 0
     for card in board.cards_in_rand_location:
@@ -156,11 +183,11 @@ def display_board(screen):
 
 
 def handle_gameplay_graphics(screen):
-    global board, click_on_card, got_update, switch_turns
+    global board, click_on_card, got_update, switch_turns, end_game, win, loose
     print("handle graph")
     display_board(screen)
 
-    while True:
+    while not end_game:
         if my_turn:
             turn_image = pygame.image.load(
                 rf"data\screens\my_turn.png")
@@ -192,6 +219,7 @@ def handle_gameplay_graphics(screen):
             lock.acquire()
             if got_update:
                 display_board(screen)
+                time.sleep(0.2)
                 got_update = False
             lock.release()
 
@@ -209,7 +237,8 @@ def keyboard_input(event, user_text):
 
 
 def handle_msg(command: bytes, msg: bytes):
-    global username, connected, ready_to_start, board, protocol, my_turn, got_update, lock, switch_turns, points
+    global username, connected, ready_to_start, board, protocol, my_turn, got_update, lock,\
+        switch_turns, points, win, loose, end_game
 
     if command == protocol.get_welcome_command():
         if protocol.analyze_message(msg) == 'successful':
@@ -218,7 +247,7 @@ def handle_msg(command: bytes, msg: bytes):
     elif command == protocol.get_wait_command():
         protocol.analyze_message(msg)
         # print(protocol.analyze_message(msg))
-        # ready_to_start = False
+        ready_to_start = False
 
     elif command == protocol.get_ready_command():
         protocol.analyze_message(msg)
@@ -230,7 +259,6 @@ def handle_msg(command: bytes, msg: bytes):
         print(f"client {username} got board from server.")
         lock.acquire()
         got_update = True
-        # print("update")
         lock.release()
 
     elif command == protocol.get_my_turn_command():
@@ -258,6 +286,30 @@ def handle_msg(command: bytes, msg: bytes):
         switch_turns = True
         lock.release()
 
+    elif command == protocol.get_end_command():
+        print(protocol.analyze_message(msg))
+        end_game = True
+
+    elif command == protocol.get_win_command():
+        print(protocol.analyze_message(msg))
+        lock.acquire()
+        win = True
+        lock.release()
+
+    elif command == protocol.get_loose_command():
+        print(protocol.analyze_message(msg))
+        lock.acquire()
+        loose = True
+        lock.release()
+
+    elif command == protocol.get_tie_command():
+        print(protocol.analyze_message(msg))
+        lock.acquire()
+        print("loose and win")
+        loose = True
+        win = True
+        lock.release()
+
 
 def received_messages(data_bytes: bytes, sock: socket.socket):
     global protocol
@@ -281,26 +333,24 @@ def handle_communication(sock: socket.socket):
 
 
 def handle_game(sock: socket.socket):
-    global my_turn, board, switch_turns
-
-    # TODO: receive data in a thread
-    # my_socket = sock
-    # data_update = threading.Thread(target=game_data_receiving)
-    # data_update.start()
+    global my_turn, board, switch_turns, end_game
 
     while True:
-        print("reset")
+        print("is my turns: " + str(my_turn))
 
         while my_turn and not switch_turns:
             check_for_board_updates(sock)
 
         while not my_turn and not switch_turns:
-            print("is my turns: " + str(my_turn))
             handle_communication(sock)
 
         if switch_turns:
             switch_turns = False
             handle_communication(sock)  # turn command
+
+        if end_game:
+            handle_communication(sock)  # exit to main
+            break
 
 
 def check_for_board_updates(sock: socket.socket):
@@ -319,29 +369,33 @@ def check_for_board_updates(sock: socket.socket):
 
 
 def main():
-    global ready_to_connect, port, ip, connected, ready_to_start
+    global ready_to_connect, port, ip, connected, ready_to_start, running, got_turn
 
     graphics = threading.Thread(target=handle_graphics)
     graphics.start()
-    user_sock = socket.socket()
 
-    while True:
-        if ready_to_connect:
-            user_sock.connect((ip, port))
-            handle_communication(user_sock) # welcome message
+    while running:
+        user_sock = socket.socket()
+        while True:
+            if ready_to_connect:
+                user_sock.connect((ip, port))
+                handle_communication(user_sock)  # welcome message
 
-            if connected:
-                break
-        else:
-            continue
+                if connected:
+                    break
+            else:
+                continue
 
-    while not ready_to_start:
-        handle_communication(user_sock) # wait or ready message
+        while not ready_to_start:
+            handle_communication(user_sock)  # wait or ready message
+        handle_communication(user_sock)  # board
+        handle_communication(user_sock)  # turn
+        handle_game(user_sock)
+        handle_communication(user_sock)  # win or loose
 
-    handle_communication(user_sock)  # board command
-    handle_communication(user_sock)  # turn command
-
-    handle_game(user_sock)
+        user_sock.close()
+    graphics.join()
+    exit()
 
 
 if __name__ == "__main__":

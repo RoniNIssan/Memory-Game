@@ -90,9 +90,11 @@ class Board:
         self.category = "animals"
         self.level = Level(level)
         self.pile = Pile(category, self.level.pile_size).rand_pile
+        self.cards_in_rand_location = self.build_board()
         self.TITLE_POS = {1: pygame.Rect(299, 0, 256, 57),
                           2: pygame.Rect(299, 0, 256, 57)}
-        self.cards_in_rand_location = self.build_board()
+        self.POINT_POS = {1: (64, 0),
+                          2: (64, 0)}
 
     def build_board(self):
         random.shuffle(self.pile) # suffle all cards
