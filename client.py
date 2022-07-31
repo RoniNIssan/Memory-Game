@@ -22,6 +22,7 @@ category = b'animals'
 connected = False
 my_turn = False
 end_game = False
+victory_status = False
 reset = False
 win = False
 tie = False
@@ -51,8 +52,6 @@ def handle_graphics():
 
     # caption and icon
     pygame.display.set_caption("Memory Game")
-    # icon = pygame.image.load()
-    # pygame.display.set_icon(icon)
 
     while running:
         for event in pygame.event.get():
@@ -74,6 +73,10 @@ def handle_graphics():
         print("end!")
         show_exit_screen(screen)
         reset = True
+        time.sleep(200)
+        # TODO: enabling more rounds - running != False
+        running = False
+
 
 
 def show_intro_screen(screen):
@@ -197,19 +200,19 @@ def show_waiting_screen(screen):
 
     print("start vid")
     while not ready_to_start and not end_game:
-        print("stack")
         waiting_screen_vid.preview()
-
     print("ready to start")
 
 
 def show_exit_screen(screen):
-    global win, tie, end_game, ready_to_start
+    global win, tie, end_game, ready_to_start, victory_status
 
     if end_game:
         if ready_to_start:
             exit_screen = pygame.image.load(rf"data\screens\no_match.png")
         else:
+            while not victory_status:
+                continue
             if win:
                 exit_screen = pygame.image.load(rf"data\screens\win.png")
             elif not win:
@@ -299,7 +302,7 @@ def keyboard_input(event, user_text):
 
 def handle_msg(command: bytes, msg: bytes):
     global username, connected, ready_for_category, ready_to_start, board, protocol, my_turn, got_update, lock,\
-        switch_turns, points, win, tie, end_game
+        switch_turns, points, win, tie, end_game, victory_status
 
     if command == protocol.get_welcome_command():
         if protocol.analyze_message(msg) == 'successful':
@@ -360,12 +363,14 @@ def handle_msg(command: bytes, msg: bytes):
     elif command == protocol.get_win_command():
         print(protocol.analyze_message(msg))
         lock.acquire()
+        victory_status = True
         win = True
         lock.release()
 
     elif command == protocol.get_loose_command():
         print(protocol.analyze_message(msg))
         lock.acquire()
+        victory_status = True
         win = False
         lock.release()
 
@@ -373,6 +378,7 @@ def handle_msg(command: bytes, msg: bytes):
         print(protocol.analyze_message(msg))
         lock.acquire()
         print("tie")
+        victory_status = True
         tie = True
         lock.release()
 
@@ -445,13 +451,20 @@ def main():
         user_sock = socket.socket()
         while True:
             if ready_to_connect:
-                user_sock.connect((ip, port))
+                try:
+                    user_sock.connect((ip, port))
+                except:
+                    print("something went wrong, please try again.")
+                    running = False
+                    break
                 handle_communication(user_sock)  # welcome message
                 if connected:
                     break
             else:
                 continue
         while True:
+            if not running:
+                break
             end_game = False
             while not ready_for_category:
                 handle_communication(user_sock)  # category command
@@ -484,6 +497,9 @@ def main():
                 continue
         user_sock.close()
     graphics.join()
+    print("close thread")
+    pygame.display.quit()
+    pygame.quit()
     exit()
 
 

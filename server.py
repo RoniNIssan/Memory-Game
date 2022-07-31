@@ -67,7 +67,6 @@ def handle_client(player, tid=0):
 
         while not got_categories:
             continue
-        #     TODO: add wait for match_categories to update
         if match_categories:
             to_send = protocol.build_message(protocol.get_ready_command(), b'successful')
             protocol.send_message(to_send, player.user_socket)
@@ -330,12 +329,13 @@ def main():
     server_socket.listen(20)
     # server_socket.settimeout(0.2)
 
+    threads = []
     while True:
-        threads = []
         ready_to_start = False
         count_new_players = 0
 
         while count_new_players < 2:
+            # TODO: accepting new clients thread.
             count_new_players += 1
             client_socket, addr = server_socket.accept()
             players.append(Player(addr, client_socket, len(threads)))
