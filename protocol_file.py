@@ -13,7 +13,9 @@ class Protocol:
             "MY TURN": b'MTRN',
             "OTHER TURN": b'OTRN',
             "CORRECT": b'CRCT',
-            "WRONG": b'WRNG'
+            "WRONG": b'WRNG',
+            "NEXT LEVEL": b'NLVL',
+            "END": b'ENDG'
         }
         self.SEPARATOR = b'#'
         self.DECLARE_END = b'$'
@@ -41,6 +43,12 @@ class Protocol:
 
     def get_worng_command(self):
         return self.COMMANDS["WRONG"]
+
+    def get_next_level_command(self):
+        return self.COMMANDS["NEXT LEVEL"]
+
+    def get_end_command(self):
+        return self.COMMANDS["END"]
 
     def build_message(self, command: bytes, msg: bytes):
         # message = command + self.SEPARATOR + msg + self.DECLARE_END
@@ -75,6 +83,12 @@ class Protocol:
             return data[5:].decode('UTF-8')
 
         if command == self.COMMANDS["WRONG"]:
+            return data[5:].decode('UTF-8')
+
+        if command == self.COMMANDS["NEXT LEVEL"]:
+            return data[5:].decode('UTF-8')
+
+        if command == self.COMMANDS["END"]:
             return data[5:].decode('UTF-8')
 
     def separate_messages(self, data_bytes: bytes):

@@ -92,6 +92,8 @@ class Board:
         self.pile = Pile(category, self.level.pile_size).rand_pile
         self.TITLE_POS = {1: pygame.Rect(299, 0, 256, 57),
                           2: pygame.Rect(299, 0, 256, 57)}
+        self.POINT_POS = {1: (64, 0),
+                          2: (64, 0)}
         self.cards_in_rand_location = self.build_board()
 
     def build_board(self):
@@ -103,3 +105,4 @@ class Board:
             cards_randomized_location_list.append(copy.copy(card))
         random.shuffle(cards_randomized_location_list)
         return cards_randomized_location_list
+

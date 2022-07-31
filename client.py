@@ -14,6 +14,7 @@ port = ""
 ip = 0
 
 # booleans
+end_game = False
 switch_turns = False
 click_on_card = False
 got_update = False
@@ -21,10 +22,12 @@ ready_to_connect = False
 ready_to_start = False
 connected = False
 my_turn = False
+change_level = False
 points = 0
 
 board = elements.Board(1, "animals")
 lock = threading.Lock()
+
 
 def handle_graphics():
     global ready_to_connect
@@ -140,10 +143,15 @@ def show_waiting_screen(screen):
 
 
 def display_board(screen):
-    global board
+    global board, points
+    print("current level " + str(board.level.level))
     base_screen = pygame.image.load(rf"data\screens\level_{board.level.level}.jpg")
     screen.blit(base_screen, (0, 0))
     pygame.display.update()
+
+    font = pygame.font.Font(r"data\fonts\Heebo-Black.ttf", 32)
+    text = font.render(f'points: {points}', True, (255, 255, 255))
+    screen.blit(text, board.POINT_POS[board.level.level])
 
     i = 0
     for card in board.cards_in_rand_location:
@@ -156,11 +164,11 @@ def display_board(screen):
 
 
 def handle_gameplay_graphics(screen):
-    global board, click_on_card, got_update, switch_turns
+    global board, click_on_card, got_update, switch_turns, end_game, change_level, ready_to_start
     print("handle graph")
     display_board(screen)
 
-    while True:
+    while not end_game:
         if my_turn:
             turn_image = pygame.image.load(
                 rf"data\screens\my_turn.png")
@@ -199,6 +207,14 @@ def handle_gameplay_graphics(screen):
             print("switched turns")
             display_board(screen)
 
+        if change_level:
+            print("change level")
+            # TODO: show announcement of new level
+            while not ready_to_start:
+                continue
+            # display_board(screen)
+            change_level = False
+
 
 def keyboard_input(event, user_text):
     if event.key == pygame.K_BACKSPACE:
@@ -209,7 +225,7 @@ def keyboard_input(event, user_text):
 
 
 def handle_msg(command: bytes, msg: bytes):
-    global username, connected, ready_to_start, board, protocol, my_turn, got_update, lock, switch_turns, points
+    global username, connected, ready_to_start, board, protocol, my_turn, got_update, lock, switch_turns, points, change_level
 
     if command == protocol.get_welcome_command():
         if protocol.analyze_message(msg) == 'successful':
@@ -230,8 +246,10 @@ def handle_msg(command: bytes, msg: bytes):
         print(f"client {username} got board from server.")
         lock.acquire()
         got_update = True
-        # print("update")
         lock.release()
+
+        if change_level:
+            ready_to_start = True
 
     elif command == protocol.get_my_turn_command():
         lock.acquire()
@@ -258,6 +276,12 @@ def handle_msg(command: bytes, msg: bytes):
         switch_turns = True
         lock.release()
 
+    elif command == protocol.get_next_level_command():
+        print(protocol.analyze_message(msg))
+        lock.acquire()
+        change_level = True
+        lock.release()
+
 
 def received_messages(data_bytes: bytes, sock: socket.socket):
     global protocol
@@ -281,13 +305,9 @@ def handle_communication(sock: socket.socket):
 
 
 def handle_game(sock: socket.socket):
-    global my_turn, board, switch_turns
+    global my_turn, board, switch_turns, change_level
 
-    # TODO: receive data in a thread
-    # my_socket = sock
-    # data_update = threading.Thread(target=game_data_receiving)
-    # data_update.start()
-
+    # TODO: handle next level
     while True:
         print("reset")
 
@@ -301,6 +321,10 @@ def handle_game(sock: socket.socket):
         if switch_turns:
             switch_turns = False
             handle_communication(sock)  # turn command
+
+        if change_level:
+            print("out of handle game")
+            break
 
 
 def check_for_board_updates(sock: socket.socket):
@@ -319,7 +343,7 @@ def check_for_board_updates(sock: socket.socket):
 
 
 def main():
-    global ready_to_connect, port, ip, connected, ready_to_start
+    global ready_to_connect, port, ip, connected, ready_to_start, change_level
 
     graphics = threading.Thread(target=handle_graphics)
     graphics.start()
@@ -338,10 +362,15 @@ def main():
     while not ready_to_start:
         handle_communication(user_sock) # wait or ready message
 
-    handle_communication(user_sock)  # board command
-    handle_communication(user_sock)  # turn command
+    while not end_game:
+        handle_communication(user_sock)  # board command
 
-    handle_game(user_sock)
+        to_send = protocol.build_message(protocol.get_wait_command(), b'got board. waiting for turn command')
+        protocol.send_message(to_send, user_sock)
+
+        handle_communication(user_sock)  # turn command
+        handle_game(user_sock)
+        ready_to_start = False
 
 
 if __name__ == "__main__":

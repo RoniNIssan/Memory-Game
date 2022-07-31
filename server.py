@@ -21,15 +21,18 @@ class Player:
             self.turn = False
 
 
-board = elements.Board(level=1, category="animals")
 level = 1
+board = elements.Board(level=1, category="animals")
 players = []
 turn = 1
+count_burnt = 0
 
 lock = threading.Lock()
 update = False
 end_game = False
+end_level = False
 two_clicks = False
+received_board = False
 pair_correct = False
 ready_to_start = False
 is_board_randomized = False
@@ -37,14 +40,14 @@ protocol = protocol_file.Protocol()
 
 
 def handle_client(player, tid=0):
-    global protocol, players, ready_to_start, level, board, is_board_randomized, turn, update, two_clicks, pair_correct
+    global protocol, players, ready_to_start, level, board, is_board_randomized, received_board, turn,\
+        update, two_clicks, pair_correct, end_level, end_game
     
     to_send = protocol.build_message(protocol.get_welcome_command(), b'successful')
     protocol.send_message(to_send, player.user_socket)
     print(f"sent player {player.pid} {str(to_send[:4])}")
 
     while not ready_to_start:
-        # time.sleep(0.8)
         to_send = protocol.build_message(protocol.get_wait_command(), b'waiting for another player')
         protocol.send_message(to_send, player.user_socket)
         print(f"sent player {player.pid} {str(to_send[:4])}")
@@ -53,26 +56,30 @@ def handle_client(player, tid=0):
     protocol.send_message(to_send, player.user_socket)
     print(f"sent player {player.pid} {str(to_send[:4])}")
 
-
     while not is_board_randomized:
         continue
 
     turns_counter = 0
 
     while not end_game:
-
         print("start round")
         lock.acquire()
         pair_correct = False
         two_clicks = False
+        received_board = False
         lock.release()
 
         to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
         protocol.send_message(to_send, players[tid].user_socket)
         print(f"sent player {players[tid].pid} {str(to_send[:4])}")
 
-        turn = turns_counter % 2
+        while not received_board:
+            handle_communication(players[tid].user_socket)
 
+        turn = turns_counter % 2
+        lock.acquire()
+        end_level = False
+        lock.release()
         player.is_turn()
 
         if player.turn:
@@ -130,15 +137,28 @@ def handle_client(player, tid=0):
                     print(f"sent player {players[(turn + 1) % 2].pid} {str(to_send[:4])}")
                     break
         turns_counter += 1
+
+        if end_level:
+            to_send = protocol.build_message(protocol.get_next_level_command(), b'moving on to next level')
+            protocol.send_message(to_send, players[tid].user_socket)
+            print(f"sent player {players[tid].pid} {str(to_send[:4])}")
+
         while not is_board_randomized:
             continue
         # time.sleep(1.2)
 
 
 def randomize_game(category):
-    global board, is_board_randomized, level
+    global board, is_board_randomized, level, lock, end_level
+    print("level = " + str(level))
     board = elements.Board(level, category)
+    lock.acquire()
     is_board_randomized = True
+    lock.release()
+
+    print("pile size = " + str(len(board.cards_in_rand_location)))
+    for card in board.cards_in_rand_location:
+        print(card.title)
 
 
 def receive_data():
@@ -154,38 +174,55 @@ def receive_data():
 
 
 def handle_game():
-    global turn, players, board, two_clicks, pair_correct, is_board_randomized
+    global turn, players, board,  pair_correct, is_board_randomized, end_game, count_burnt, end_level
+
     count_up = 0
     list_up = []
     for card in board.cards_in_rand_location:
+        lock.acquire()
+        is_board_randomized = False
+        lock.release()
+
         if card.is_face_up and not card.burnt:
             count_up += 1
             list_up.append(card)
 
         if count_up == 2:
-            print("two clicks: " + str(two_clicks))
             if list_up[0].title == list_up[1].title:
                 lock.acquire()
                 pair_correct = True
                 lock.release()
                 print("pair correct")
                 players[turn].points += 1
+
                 list_up[1].burnt = True
                 list_up[0].burnt = True
+                count_burnt += 2
 
             else:
                 list_up[0].is_face_up = False
                 list_up[1].is_face_up = False
 
-            lock.acquire()
-            is_board_randomized = True
-            lock.release()
+            if count_burnt == board.level.pile_size:
+                if board.level.level != 2:  # if current level is not equal to final level
+                    lock.acquire()
+                    end_level = True
+                    lock.release()
+                else:
+                    lock.acquire()
+                    end_game = True
+                    lock.release()
+            else:
+                lock.acquire()
+                is_board_randomized = True
+                lock.release()
+
             break
 
 
 def handle_msg(command: bytes, msg: bytes):
     """function handles messages from client """
-    global ready_to_start, board, protocol, update, lock
+    global ready_to_start, board, protocol, update, lock, received_board
 
     if command == protocol.get_board_command():
         lock.acquire()
@@ -195,6 +232,12 @@ def handle_msg(command: bytes, msg: bytes):
             board = protocol_file.unpack(protocol.analyze_message(msg))
         except:
             pass
+
+    if command == protocol.get_wait_command():
+        print(f"client says {protocol.analyze_message(msg)}")
+        lock.acquire()
+        received_board = True
+        lock.release()
 
 
 def received_messages(data_bytes: bytes):
@@ -237,6 +280,9 @@ def main():
 
     # handle_game()
     while not end_game:
+        if end_level:
+            level += 1
+            randomize_game("animals")
         continue
 
     for t in threads:
