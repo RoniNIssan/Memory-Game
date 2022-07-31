@@ -52,11 +52,14 @@ class Pile:
         self.pile = CardsInCategroy(category).get_pile()
         self.rand_pile = CardsInCategroy("empty").get_pile()
 
-        game_randomize_pile = []
-        random_list = random.sample(range(0, self.pile_size), int(self.pile_size / 2))
-        for index in random_list:
-            game_randomize_pile.append(self.pile[index - 1])
-        self.rand_pile = game_randomize_pile
+        # game_randomize_pile = []
+        # random_list = random.sample(range(0, self.pile_size), int(self.pile_size / 2))
+        # for index in random_list:
+        #     game_randomize_pile.append(self.pile[index - 1])
+        # self.rand_pile = game_randomize_pile
+
+        self.rand_pile = random.sample(self.pile, int(self.pile_size / 2))
+
 
 class Level:
     def __init__(self, level):
