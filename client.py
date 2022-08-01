@@ -35,6 +35,9 @@ lock = threading.Lock()
 
 
 def handle_graphics():
+    """
+    function handles game graphic continuously.
+    """
     global ready_to_connect
     global port
     global ip
@@ -222,6 +225,7 @@ def show_exit_screen(screen):
 
 
 def display_board(screen):
+    """simply display board by data received."""
     global board, category
     base_screen = pygame.image.load(rf"data\screens\level_{board.level.level}.jpg")
     screen.blit(base_screen, (0, 0))
@@ -242,6 +246,9 @@ def display_board(screen):
 
 
 def handle_gameplay_graphics(screen):
+    """
+    function is resposible about game visuals.
+    """
     global board, click_on_card, got_update, switch_turns, end_game, win, loose
     print("handle graph")
     display_board(screen)
@@ -296,6 +303,9 @@ def keyboard_input(event, user_text):
 
 
 def handle_msg(command: bytes, msg: bytes):
+    """
+    this function analyze message by its command and params.
+    """
     global username, connected, ready_for_category, ready_to_start, board, protocol, my_turn, got_update, lock,\
         switch_turns, points, win, tie, end_game, victory_status
 
@@ -400,6 +410,9 @@ def handle_communication(sock: socket.socket):
 
 
 def handle_game(sock: socket.socket):
+    """
+    this function receives messages and inputs from server about the game/
+    """
     global my_turn, board, switch_turns, end_game
 
     while True:

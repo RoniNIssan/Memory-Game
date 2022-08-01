@@ -46,6 +46,9 @@ protocol = protocol_file.Protocol()
 
 
 def handle_client(player, tid=0):
+    """
+    this main function is responsible of all communication with the client.
+    """
     global protocol, players, ready_to_start, level, board, is_board_randomized, turn, update,\
         two_clicks, pair_correct, count_burnt, match_categories, got_categories, reset, end_game
 
@@ -192,6 +195,7 @@ def handle_client(player, tid=0):
 
 
 def check_victory(last_index):
+    """function checks which client won."""
     global players, lock
 
     lock.acquire()
@@ -211,24 +215,17 @@ def check_victory(last_index):
 
 
 def randomize_game(category):
+    """this function builds a board according to required level and category."""
     global board, is_board_randomized, level
     board = elements.Board(level, category)
     is_board_randomized = True
 
 
-def receive_data():
-    global turn, players
-
-    while True:
-        handle_communication(players[turn].user_socket)
-        print("get turn msg")
-
-        to_send = protocol.build_message(protocol.get_board_command(), protocol_file.pack(board))
-        protocol.send_message(to_send, players[(turn + 1) % 2].user_socket)
-        print("sent other not turn msg")
-
-
 def handle_game():
+    """
+    this function calculates the board characters.
+    Function decides when to turn or turn back card, and when board is full.
+    """
     global turn, players, board, two_clicks, pair_correct, is_board_randomized, count_burnt, end_game
     count_up = 0
     list_up = []
@@ -309,6 +306,7 @@ def received_messages(data_bytes: bytes, player=None):
 
 
 def handle_communication(sock: socket.socket, player=None):
+    """this function receives all messages of all kind and analyze them by protocol lower level functions."""
     try:
         msg = sock.recv(1024)
         received_messages(msg, player)
